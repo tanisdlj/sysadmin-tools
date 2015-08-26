@@ -28,41 +28,40 @@ readonly DOWN_ALL_SERVICES=86
 readonly DOWN_SERVICE=56
 
 usage () {
-    echo "  Usage: setNagiosTo.sh [-h]|[-H|-S|-s|-G|-g] args ... [commentary] \
-\
-          -u | --usage  :   Shows this message \
-\
-          -H            :   Host to maintenance \
-          -S            :   All services in a Host to maintenance \
-          -s            :   Service to maintenance \
-          -G            :   Host Group to maintenance \
-          -g            :   Service Group to maintenance \
-\
-          args \
-          -n \$NAGIOSURL | --nagios=\$NAGIOSURL :   Nagios URL \
-          -u \$USER | --user=\$USER             :   User name \
-          -p \$PASSWORD | --password=\$PASSWORD :   Password \
-\
-          -T \$TARGET | --target=\$TARGET       :   Target Host/Service/Service Group/Host Group \
-          [-h \$hostName | hostname=\$hostName] :   Only when Target = Service (-s). Hostname \
-                                                    where the service is located. \
-          -f \$STARTTIME| --from=\$STARTTIME    :   Maintenance start time with format \"+%Y-%m-%d %H:%M:%S\" \
-                                                    Examples: --from=1988-05-05 08:15:34 \
-                                                              --from=now \
-          -t \$ENDTIME | --to=\$ENDTIME         :   Maintenance end time with the same format than -f \
-          commentary                            :   Any sentence will be used as commentary for the maintenance."
+    echo "  Usage: setNagiosTo.sh [-h]|[-H|-S|-s|-G|-g] args ... [description]"
+    echo ""
+    echo "         -u | --usage  :   Shows this message"
+    echo "         -H            :   Host to maintenance"
+    echo "         -S            :   All services in a Host to maintenance"
+    echo "         -s            :   Service to maintenance "
+    echo "         -G            :   Host Group to maintenance "
+    echo "         -g            :   Service Group to maintenance "
+    echo ""
+    echo "         args "
+    echo "         -n \$NAGIOSURL | --nagios=\$NAGIOSURL :   Nagios URL "
+    echo "         -U \$USER | --user=\$USER             :   User name "
+    echo "         -p \$PASSWORD | --password=\$PASSWORD :   Password "
+    echo ""
+    echo "         -T \$TARGET | --target=\$TARGET       :   Target Host/Service/Service Group/Host Group "
+    echo "         [-h \$hostName | hostname=\$hostName] :   Only when Target = Service (-s). Hostname "
+    echo "                                                   where the service is located. "
+    echo "         -f \$STARTTIME| --from=\$STARTTIME    :   Maintenance start time with format \"+%Y-%m-%d %H:%M:%S\" "
+    echo "                                                   Examples: --from=1988-05-05 08:15:34 "
+    echo "                                                             --from=now "
+    echo "         -t \$ENDTIME | --to=\$ENDTIME         :   Maintenance end time with the same format than -f "
+    echo "         description                           :   Any sentence will be used as description for the maintenance."
     exit 0;
 }
 
 checkStartDate () {
     NOWSEC=$(date -d "$NOW" +%s)
     STARTSEC=$(date -d "$startTime" +%s)
-    ENDSEC==$(date -d "$endTime" +%s)
+    ENDSEC=$(date -d "$endTime" +%s)
     if [[ $NOWSEC -gt $STARTSEC ]]; then
         echo "ERROR: Start date is previous than now: $NOW \
            Please, select a date in the future, not in the past."
         exit 1
-    elif [[ $NOWSEC -gt $ENDSEC ]]; then
+    elif [ $NOWSEC -gt $ENDSEC ]; then
         echo "ERROR: End date is previous than now: $NOW \
            Please, select a date in the future, not in the past."
         exit 1
@@ -72,27 +71,20 @@ checkStartDate () {
     fi       
 }
 
-checkArgs() {
-#   numero de args
-#   start time
-#   time = now
-#   service has hostName
-}
-
 hostOption () {
     echo "Scheduling maintenance for $target host from $startTime to $endTime"
-    $curlSpecificArgs="cmd_typ=$DOWN_HOST&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
+    curlSpecificArgs="cmd_typ=$DOWN_HOST&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
 }
 
 servicesOption () {
     echo "Scheduling maintenance for $target host services from $startTime to $endTime"
-    $curlSpecificArgs="cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
+    curlSpecificArgs="cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
  #   curl -u $USER:$PASSWORD -d "cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$COMMENT&trigger=0&start_time=$STARTTIME&end_time=$ENDTIME&fixed=1&hours=0&minutes=0&host=$HOST" $NAGIOSURL/nagios3/cgi-bin/cmd.cgi
 }
 
 serviceOption () {
     echo "Scheduling maintenance for $target service on $hostName from $startTime to $endTime"
-    $curlSpecificArgs="cmd_typ=$DOWN_SERVICE&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$hostName&service=$target"
+    curlSpecificArgs="cmd_typ=$DOWN_SERVICE&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$hostName&service=$target"
 }
 
 hostGroupOption () {
@@ -106,8 +98,8 @@ serviceGroupOption () {
 }
 
 startMaintenance () {
-    $curlCommonArgs="-u $user:$password $nagios/nagios3/cgi-bin/cmd.cgi"
-    curl -d $curlSpecificArgs $curlCommonArgs
+    curlCommonArgs="-u $user:$password $nagios/nagios3/cgi-bin/cmd.cgi"
+    curl -d "$curlSpecificArgs" $curlCommonArgs
     if [ $? -eq 0 ]; then
         echo "Maintenance scheduled."
     else
@@ -118,22 +110,41 @@ startMaintenance () {
 
 optionManager () {
     case "$option" in
-        0) hostOption; break;;
-        1) servicesOption; break;;
-        2) serviceOption; break;;
-        3) hostGroupOption; break;;
-        4) serviceGroupOption; break;;
+        0) hostOption;;
+        1) servicesOption;;
+        2) serviceOption;;
+        3) hostGroupOption;;
+        4) serviceGroupOption;;
         *) echo "Wrong option selected. Review the script."; exit 1;;
     esac
 }
 
+checkArgs() {
+  if [ $startTime = "now" ]; then
+    startTime=$NOW
+  fi
+
+  if [ $option -eq 2 ]; then
+    if [ $hostName = "" ]; then
+      echo "ERROR: For this option you need to provide a hostName."
+      usage
+      exit 1
+    fi
+  fi
+}
+
 setup () {
-#   checkArgs
+    checkArgs
     checkStartDate
     optionManager
     startMaintenance
     exit 0
 }
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 1;
+fi
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -146,7 +157,7 @@ while [ "$#" -gt 0 ]; do
 
     # Parameters
     -n) nagios="$2"; shift 2;;
-    -u) user="$2"; shift 2;;
+    -U) user="$2"; shift 2;;
     -p) password="$2"; shift 2;;
 
     --nagios=*) nagios="${1#*=}"; shift 1;;
