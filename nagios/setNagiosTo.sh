@@ -99,7 +99,7 @@ serviceGroupOption () {
 
 startMaintenance () {
     curlCommonArgs="-u $user:$password $nagios/nagios3/cgi-bin/cmd.cgi"
-    curl -d "$curlSpecificArgs" $curlCommonArgs
+    output=`curl -d "$curlSpecificArgs" $curlCommonArgs`
     if [ $? -eq 0 ]; then
         echo "Maintenance scheduled."
     else
