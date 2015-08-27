@@ -97,11 +97,21 @@ serviceGroupOption () {
     exit 1;
 }
 
+processOutput () {
+    if [ $1 == "Your command request was successfully submitted to Nagios for processing." ]; then
+       echo "Maintenance scheduled"
+    else
+       echo $1
+       exit 2 
+    fi
+}
+
 startMaintenance () {
     curlCommonArgs="-u $user:$password $nagios/nagios3/cgi-bin/cmd.cgi"
-    output=`curl -d "$curlSpecificArgs" $curlCommonArgs`
+    output=`curl -s -d "$curlSpecificArgs" $curlCommonArgs | grep "infoMessage" | sed -e "s/.*infoMessage'>//" -e "s/<BR.*//"`
+
     if [ $? -eq 0 ]; then
-        echo "Maintenance scheduled."
+        processOutput $output
     else
         echo "[ERROR] Ooops, something went wrong."
         exit 1
