@@ -1,15 +1,16 @@
 #!/bin/bash
 #
 # Title       :setNagiosTo.sh
-# Description :Send orders to Nagios 1/2/3 through the web interface.
+# Description :Schedule maintenance for Nagios through the web interface.
 # Author      :Diego Lucas Jimenez (diego.lucas.jimenez@gmail.com)
-# Date        :20150812
+# Date        :20150828
 # Version     :1.0
 # Usage       :bash setNagiosTo.sh <> 
 # Updates     : 
-#              12/08/2015 diego.lucas.jimenez@gmail.com initial version
+#              28/08/2015 diego.lucas.jimenez@gmail.com release version
+# TODOs: Avoid magic numbers, allow maintenance host+all svcs, maintenance hostgroups and svcgroups
 
-readonly VERSION="1.0a"
+readonly VERSION="1.0"
 option=
 nagios=""
 user=""
