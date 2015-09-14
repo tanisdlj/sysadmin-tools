@@ -54,6 +54,15 @@ usage () {
     exit 0;
 }
 
+detectOS () {
+   if [[ "$OSTYPE" == "linux-gnu" ]]; then
+      echo "Linux distro detected"
+   else
+      echo "Run this script on a Linux machine. Other OSes will be implemented later."
+      exit 0
+   fi
+}
+
 checkStartDate () {
     NOWSEC=$(date -d "$NOW" +%s)
     STARTSEC=$(date -d "$startTime" +%s)
@@ -75,17 +84,21 @@ checkStartDate () {
 hostOption () {
     echo "Scheduling maintenance for $target host from $startTime to $endTime"
     curlSpecificArgs="cmd_typ=$DOWN_HOST&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
+    startMaintenance
+    servicesOption
 }
 
 servicesOption () {
     echo "Scheduling maintenance for $target host services from $startTime to $endTime"
     curlSpecificArgs="cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
  #   curl -u $USER:$PASSWORD -d "cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$COMMENT&trigger=0&start_time=$STARTTIME&end_time=$ENDTIME&fixed=1&hours=0&minutes=0&host=$HOST" $NAGIOSURL/nagios3/cgi-bin/cmd.cgi
+    startMaintenance
 }
 
 serviceOption () {
     echo "Scheduling maintenance for $target service on $hostName from $startTime to $endTime"
     curlSpecificArgs="cmd_typ=$DOWN_SERVICE&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$hostName&service=$target"
+    startMaintenance
 }
 
 hostGroupOption () {
@@ -145,10 +158,10 @@ checkArgs() {
 }
 
 setup () {
+    detectOS
     checkArgs
     checkStartDate
     optionManager
-    startMaintenance
     exit 0
 }
 
