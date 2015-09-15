@@ -51,7 +51,6 @@ usage () {
     echo "                                                             --from=now "
     echo "         -t \$ENDTIME | --to=\$ENDTIME         :   Maintenance end time with the same format than -f "
     echo "         description                           :   Any sentence will be used as description for the maintenance."
-    exit 0;
 }
 
 detectOS () {
@@ -112,7 +111,8 @@ serviceGroupOption () {
 }
 
 processOutput () {
-    if [ $1 == "Your command request was successfully submitted to Nagios for processing." ]; then
+    echo "OUTPUT: $1"
+    if [ $1 = "Your command request was successfully submitted to Nagios for processing." ]; then
        echo "Maintenance scheduled"
     else
        echo $1
@@ -202,8 +202,8 @@ while [ "$#" -gt 0 ]; do
     --target|--from|--to) echo "$1 requires an argument" >&2; exit 1;;
 
     # Other args
-    -u) usage;;
-    --usage) usage;;
+    -u) usage; exit 0;;
+    --usage) usage; exit 0;;
     -*) echo "unknown option: $1" >&2; exit 1;;
     *) commentary="$commentary $1"; shift 1;;
   esac
