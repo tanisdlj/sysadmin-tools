@@ -84,13 +84,12 @@ hostOption () {
     echo "Scheduling maintenance for $target host from $startTime to $endTime"
     curlSpecificArgs="cmd_typ=$DOWN_HOST&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
     startMaintenance
-    servicesOption
+    #servicesOption
 }
 
 servicesOption () {
     echo "Scheduling maintenance for $target host services from $startTime to $endTime"
     curlSpecificArgs="cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$commentary&trigger=0&start_time=$startTime&end_time=$endTime&fixed=1&hours=0&minutes=0&host=$target"
- #   curl -u $USER:$PASSWORD -d "cmd_typ=$DOWN_ALL_SERVICES&cmd_mod=2&com_data=$COMMENT&trigger=0&start_time=$STARTTIME&end_time=$ENDTIME&fixed=1&hours=0&minutes=0&host=$HOST" $NAGIOSURL/nagios3/cgi-bin/cmd.cgi
     startMaintenance
 }
 
@@ -111,11 +110,14 @@ serviceGroupOption () {
 }
 
 processOutput () {
-    echo "OUTPUT: $1"
-    if [ $1 = "Your command request was successfully submitted to Nagios for processing." ]; then
+    output="$*"
+    if [ "$output" == "Your command request was successfully submitted to Nagios for processing." ]; then
        echo "Maintenance scheduled"
+    elif [[ $# -eq 0 ]]; then
+       echo "[ERROR] Output is empty!"
+       exit 2
     else
-       echo $1
+       echo "Error processing output: $output"
        exit 2 
     fi
 }
