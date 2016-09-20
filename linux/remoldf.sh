@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Removes files older than X given days from a specific folder.
+# Useful to get rid of old backup files.
 # 19/09/2016 diego.lucas.jimenez@gmail.com initial version
 
-regexNumber='^[0-9][0-9]?[0-9]?$'
+readonly regexNumber='^[0-9][0-9]?[0-9]?$'
 DAYS=
 FOLDER=""
 
@@ -27,8 +28,8 @@ checkFolder () {
 
 info () {
   if [ $quiet -ne 1 ]; then
-    deleteCount=`find "$FOLDER" -maxdepth 1 -type f -mtime +${DAYS} | wc -l`
-    totalCount=`find "$FOLDER" -maxdepth 1 -type f | wc -l`
+    local deleteCount=`find "$FOLDER" -maxdepth 1 -type f -mtime +${DAYS} | wc -l`
+    local totalCount=`find "$FOLDER" -maxdepth 1 -type f | wc -l`
     echo "$deleteCount of $totalCount removed, keeping $(( $totalCount-$deleteCount ))"
   fi
 }
@@ -55,6 +56,8 @@ remove () {
 usage () {
   echo "  Remove files older than \$days files in a given \$path."
   echo "  Usage: remoldf.sh [-h|--help] | [-k \$days] [-f \$path]"
+  echo "  ~# ./remoldf.sh -k 90 -f /backup/mystuff"
+  echo "  30 of 120 removed, keeping 90"
   echo ""
   echo "      -h   :   Shows this message"
   echo "      -q   :   Remove info messages"
@@ -70,7 +73,7 @@ if [ "$#" -lt 4 ] ; then
   exit 2
 fi
 
-## Arguments
+# Arguments
 while [ "$#" -gt 0 ]; do
   case $1 in
     -k) if [[ $2 =~ $regexNumber ]] ; then
