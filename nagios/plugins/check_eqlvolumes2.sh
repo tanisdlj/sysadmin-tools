@@ -1,5 +1,9 @@
 #!/bin/bash
 
+
+$snmpTrap=""
+$snmpHost=""
+
 toXB () {
   local arg1=$1
   local inGB=`bc <<< "scale=2;${arg1}/1024"`
@@ -23,16 +27,16 @@ toPercentage () {
 }
 
 checkAll () {
-  VOLIDS=`snmpwalk -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
+  VOLIDS=`snmpwalk -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $snmpTrap $snmpHost FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
   echo "Volume Name (ID) Used Space / Total Space (Percentage Used)"
   echo "############################################"
 
   for ID in $VOLIDS; do
-    VolName=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::nASVolumeVolumeName.$ID`
+    VolName=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $snmpTrap $snmpHost FLUIDFS-MIB::nASVolumeVolumeName.$ID`
     VolName=${VolName//\"}
-    VolSize=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::nASVolumeSizeMB.$ID`
+    VolSize=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $snmpTrap $snmpHost FLUIDFS-MIB::nASVolumeSizeMB.$ID`
     VolSize=${VolSize//\"}
-    VolUsed=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
+    VolUsed=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $snmpTrap $snmpHost FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
     VolUsed=${VolUsed//\"}
 
     Size=$(toXB $VolSize)

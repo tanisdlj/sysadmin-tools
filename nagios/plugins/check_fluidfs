@@ -1,14 +1,15 @@
 #!/bin/bash
 
-#snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::fluidFSNASPoolTotalCapacityMB
+TRAP=$1
+FluidFSHost=$2
 
-NASPoolTotalUsedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUsedMB`
-NASPoolTotalCapacityMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalCapacityMB`
-NASPoolTotalUnusedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUnusedMB`
+NASPoolTotalUsedMB=`snmpwalk -O Qv -v2c -c $TRAP $FluidFSHost nASPoolTotalUsedMB`
+NASPoolTotalCapacityMB=`snmpwalk -O Qv -v2c -c $TRAP $FluidFSHost nASPoolTotalCapacityMB`
+NASPoolTotalUnusedMB=`snmpwalk -O Qv -v2c -c $TRAP $FluidFSHost nASPoolTotalUnusedMB`
 
-NASPoolTotalReservedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalReservedMB`
-NASPoolTotalUnusedReservedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUnusedReservedMB`
-NASPoolTotalUnusedUnreservedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUnusedUnreservedMB`
+NASPoolTotalReservedMB=`snmpwalk -O Qv -v2c -c $TRAP $FluidFSHost nASPoolTotalReservedMB`
+NASPoolTotalUnusedReservedMB=`snmpwalk -O Qv -v2c -c $TRAP $FluidFSHost nASPoolTotalUnusedReservedMB`
+NASPoolTotalUnusedUnreservedMB=`snmpwalk -O Qv -v2c -c $TRAP $FluidFSHost nASPoolTotalUnusedUnreservedMB`
 
 
 echo "NAS Pool free $(bc <<< "scale=3;${NASPoolTotalUnusedMB//\"}") MB"
@@ -28,11 +29,3 @@ echo "Reserved TOTAL $(bc <<< "scale=2;${NASPoolTotalReservedMB//\"}") MB"
 echo "Reserved TOTAL $(bc <<< "scale=2;${NASPoolTotalReservedMB//\"}/1024/1024") TB"
 echo "Reserved Used $(bc <<< "scale=2;(${NASPoolTotalReservedMB//\"} - ${NASPoolTotalUnusedReservedMB//\"})") MB"
 echo "Reserved Used $(bc <<< "scale=2;(${NASPoolTotalReservedMB//\"} - ${NASPoolTotalUnusedReservedMB//\"})/1024/1024") TB"
-
-snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::fluidFSProduct.6.1.2
-
-# Get volume IDs
-VOLIDS=`snmpwalk -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
-for ID in VOLIDS; do
-print "ID is $ID"
-done
