@@ -1,0 +1,38 @@
+#!/bin/bash
+
+#snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::fluidFSNASPoolTotalCapacityMB
+
+NASPoolTotalUsedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUsedMB`
+NASPoolTotalCapacityMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalCapacityMB`
+NASPoolTotalUnusedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUnusedMB`
+
+NASPoolTotalReservedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalReservedMB`
+NASPoolTotalUnusedReservedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUnusedReservedMB`
+NASPoolTotalUnusedUnreservedMB=`snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** nASPoolTotalUnusedUnreservedMB`
+
+
+echo "NAS Pool free $(bc <<< "scale=3;${NASPoolTotalUnusedMB//\"}") MB"
+echo "NAS Pool free $(bc <<< "scale=3;${NASPoolTotalUnusedMB//\"}/1024/1024") TB"
+echo "NAS Pool Total $(bc <<< "scale=3;${NASPoolTotalCapacityMB//\"}") MB"
+echo "NAS Pool Total $(bc <<< "scale=3;${NASPoolTotalCapacityMB//\"}/1024/1024") TB"
+echo "Unreserved free $(bc <<< "scale=2;${NASPoolTotalUnusedUnreservedMB//\"}") MB"
+echo "Unreserved free $(bc <<< "scale=2;${NASPoolTotalUnusedUnreservedMB//\"}/1024/1024") TB"
+
+
+
+echo ""
+echo "NAS Container space by use"
+echo "Reserved free $(bc <<< "scale=2;${NASPoolTotalUnusedReservedMB//\"}") MB"
+echo "Reserved free $(bc <<< "scale=2;${NASPoolTotalUnusedReservedMB//\"}/1024/1024") TB"
+echo "Reserved TOTAL $(bc <<< "scale=2;${NASPoolTotalReservedMB//\"}") MB"
+echo "Reserved TOTAL $(bc <<< "scale=2;${NASPoolTotalReservedMB//\"}/1024/1024") TB"
+echo "Reserved Used $(bc <<< "scale=2;(${NASPoolTotalReservedMB//\"} - ${NASPoolTotalUnusedReservedMB//\"})") MB"
+echo "Reserved Used $(bc <<< "scale=2;(${NASPoolTotalReservedMB//\"} - ${NASPoolTotalUnusedReservedMB//\"})/1024/1024") TB"
+
+snmpwalk -O Qv -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::fluidFSProduct.6.1.2
+
+# Get volume IDs
+VOLIDS=`snmpwalk -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c ***REMOVED*** ***REMOVED*** FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
+for ID in VOLIDS; do
+print "ID is $ID"
+done
