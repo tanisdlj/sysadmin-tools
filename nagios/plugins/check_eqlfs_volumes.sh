@@ -18,16 +18,17 @@ CRITICAL=95
 
 setup () {
   checkArgs
+  checkVolume
 }
 
 checkArgs () {
   # Host
-  if [ -z "$SNMP_HOST"]; then
+  if [ -z "$SNMP_HOST" ]; then
     echo "ERROR: No host defined"
     exit 3
   fi
   # Volume
-  if [ "$discover" -eq 0 ] && [ -z "$volume"]; then
+  if [ "$discover" -eq 0 ] && [ -z "$volume" ]; then
     echo "ERROR: No volume defined"
     exit 3
   fi
@@ -78,70 +79,71 @@ toPercentage () {
 getVolData () {
   local VolID=$1
   local VolName=$2
+
   local VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$VolID`
   local VolSize=${VolSize//\"}
   local VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$VolID`
   local VolUsed=${VolUsed//\"}
+
   local Size=$(toXB $VolSize)
   local Used=$(toXB $VolUsed)
   local PercUsed=$(toPercentage ${VolUsed} ${VolSize})
-  echo "$VolName ($PercUsed %) $Used / $Size (ID ${VolID//\"})"
+
+  local volData="$VolName ($PercUsed %) $Used / $Size (ID ${VolID//\"})"
 
   if [ $discover -eq 0 ]; then
-    checkUsage $PercUsed
+    checkUsage "$PercUsed" "$volData"
+  else
+    echo "$volData"
   fi
 }
 
-checkAll () {
-#  VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
-  echo "Volume Name (Percentage Used) Used Space / Total Space (ID)"
-  echo "###########################################################"
-
-#  for ID in $VOLIDS; do
-#    VolName=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
-#    VolName=${VolName//\"}
-#    getVolData $ID $VolName
-##    VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
-##    VolSize=${VolSize//\"}
-##    VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
-##    VolUsed=${VolUsed//\"}
-
-##    Size=$(toXB $VolSize)
-##    Used=$(toXB $VolUsed)
-##    PercUsed=$(toPercentage ${VolUsed} ${VolSize})
-
-##    echo "$VolName (${ID//\"}) $Used / $Size ($PercUsed %)"
-#  done
-}
-
 checkVolume () {
+  local volFound=0
+  # Discovery mode
+  if [ $discover -eq 1 ]; then
+    echo "Volume Name (Percentage Used) Used Space / Total Space (ID)"
+    echo "###########################################################"
+  fi
+
+  # Checking volumes
   local VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
   for ID in $VOLIDS; do
+    # Getting Volume Name and cleaning it.
     VolName=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
     VolName=${VolName//\"}
+
     if [ "$VolName" == "$volume" ] || [ $discover -eq 1 ]; then
-      getVolData $ID $VolName
-#      VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
-#      VolSize=${VolSize//\"}
-#      VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
-#      VolUsed=${VolUsed//\"}
-#      Size=$(toXB $VolSize)
-#      Used=$(toXB $VolUsed)
-#      PercUsed=$(toPercentage ${VolUsed} ${VolSize})
-#      echo "$VolName (${ID//\"}) $Used / $Size ($PercUsed %)"
+      volFound=1
+      getVolData "$ID" "$VolName"
     fi
   done
+
+  if [ $volFound -eq 0 ]; then
+    echo "ERROR: Requested volume not found"
+    exit 3
+  fi
 }
 
 checkUsage () {
   local perc=$1
-  if [ $perc -ge $CRITICAL ]; then
-    exit 2
-  elif [ $perc -ge $WARNING ]; then
-    exit 1
+  local volData="$2"
+  local checkStatus="UNKNOWN:"
+  local exitCode=3
+
+  if [ ${perc%.*} -ge $CRITICAL ]; then
+    checkStatus="CRITICAL:"
+    exitCode=2
+  elif [ ${perc%.*} -ge $WARNING ]; then
+    checkStatus="WARNING:"
+    exitCode=1
   else
-    exit 0
+    checkStatus="OK:"
+    exitCode=0
   fi
+
+  echo "$checkStatus $volData"
+  exit $exitCode
 }
 
 # Args management
@@ -158,9 +160,9 @@ while [ "$#" -gt 0 ]; do
     -D) discover=1; shift 1;;
 
     # Parameters
-    -H) SNMP_HOST=="$2"; shift 2;;
+    -H) SNMP_HOST="$2"; shift 2;;
     -C) COMMUNITY="$2"; shift 2;;
-    -m) MIB_FILE="$2"; shift 2;;
+    -M) MIB_FILE="$2"; shift 2;;
 
     # Specific arguments
     -v) volume="$2"; shift 2;;
