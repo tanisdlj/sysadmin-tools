@@ -8,11 +8,35 @@
 
 # 19/09/2016 diego.lucas.jimenez@gmail.com initial version
 
+discover=0
 SNMP_HOST=""
 COMMUNITY="public"
 MIB_FILE="/usr/share/mibs/FluidFS-MIB.txt"
+volume=""
 WARNING=90
 CRITICAL=95
+
+setup () {
+  checkArgs
+}
+
+checkArgs () {
+  # Host
+  if [ -z "$SNMP_HOST"]; then
+    echo "ERROR: No host defined"
+    exit 3
+  fi
+  # Volume
+  if [ "$discover" -eq 0 ] && [ -z "$volume"]; then
+    echo "ERROR: No volume defined"
+    exit 3
+  fi
+  # Check MIB file
+  if [ ! -r "$MIB_FILE" ]; then
+    echo "ERROR: MIB file not found or permission problem"
+    exit 3
+  fi
+}
 
 usage () {
   echo "  Discover or check Dell Equallogic FluidFS Volumes."
@@ -51,33 +75,87 @@ toPercentage () {
   echo $perc
 }
 
-checkAll () {
-  VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
-  echo "Volume Name (ID) Used Space / Total Space (Percentage Used)"
-  echo "############################################"
+getVolData () {
+  local VolID=$1
+  local VolName=$2
+  local VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$VolID`
+  local VolSize=${VolSize//\"}
+  local VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$VolID`
+  local VolUsed=${VolUsed//\"}
+  local Size=$(toXB $VolSize)
+  local Used=$(toXB $VolUsed)
+  local PercUsed=$(toPercentage ${VolUsed} ${VolSize})
+  echo "$VolName ($PercUsed %) $Used / $Size (ID ${VolID//\"})"
 
+  if [ $discover -eq 0 ]; then
+    checkUsage $PercUsed
+  fi
+}
+
+checkAll () {
+#  VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
+  echo "Volume Name (Percentage Used) Used Space / Total Space (ID)"
+  echo "###########################################################"
+
+#  for ID in $VOLIDS; do
+#    VolName=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
+#    VolName=${VolName//\"}
+#    getVolData $ID $VolName
+##    VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
+##    VolSize=${VolSize//\"}
+##    VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
+##    VolUsed=${VolUsed//\"}
+
+##    Size=$(toXB $VolSize)
+##    Used=$(toXB $VolUsed)
+##    PercUsed=$(toPercentage ${VolUsed} ${VolSize})
+
+##    echo "$VolName (${ID//\"}) $Used / $Size ($PercUsed %)"
+#  done
+}
+
+checkVolume () {
+  local VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
   for ID in $VOLIDS; do
     VolName=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
     VolName=${VolName//\"}
-    VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
-    VolSize=${VolSize//\"}
-    VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
-    VolUsed=${VolUsed//\"}
-
-    Size=$(toXB $VolSize)
-    Used=$(toXB $VolUsed)
-    PercUsed=$(toPercentage ${VolUsed} ${VolSize})
-
-    echo "$VolName (${ID//\"}) $Used / $Size ($PercUsed %)"
+    if [ "$VolName" == "$volume" ] || [ $discover -eq 1 ]; then
+      getVolData $ID $VolName
+#      VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
+#      VolSize=${VolSize//\"}
+#      VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
+#      VolUsed=${VolUsed//\"}
+#      Size=$(toXB $VolSize)
+#      Used=$(toXB $VolUsed)
+#      PercUsed=$(toPercentage ${VolUsed} ${VolSize})
+#      echo "$VolName (${ID//\"}) $Used / $Size ($PercUsed %)"
+    fi
   done
+}
+
+checkUsage () {
+  local perc=$1
+  if [ $perc -ge $CRITICAL ]; then
+    exit 2
+  elif [ $perc -ge $WARNING ]; then
+    exit 1
+  else
+    exit 0
+  fi
 }
 
 # Args management
 
+if [ "$#" -eq 0 ]; then
+  echo "ERROR: Arguments required"
+  usage
+  exit 3
+fi
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     # Select operation to perform
-    -D) checkAll; exit 0;;
+    -D) discover=1; shift 1;;
 
     # Parameters
     -H) SNMP_HOST=="$2"; shift 2;;
@@ -92,7 +170,8 @@ while [ "$#" -gt 0 ]; do
     # Other args
     -h) usage; exit 0;;
     --help) usage; exit 0;;
-    *) echo "ERROR: Unknown option $1"; usage; exit 1;;
+    *) echo "ERROR: Unknown option $1"; usage; exit 3;;
   esac
 done
 
+setup
