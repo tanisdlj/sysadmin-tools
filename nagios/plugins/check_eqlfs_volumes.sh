@@ -96,9 +96,9 @@ getVolData () {
   local VolID=$1
   local VolName=$2
 
-  local VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$VolID`
+  local VolSize=`snmpwalk -O Qv -m ${MIB_FILE} -v2c -c ${COMMUNITY} ${SNMP_HOST} ${SNMP_FLUIDFS_VolSize}.${VolID}`
   local VolSize=${VolSize//\"}
-  local VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$VolID`
+  local VolUsed=`snmpwalk -O Qv -m ${MIB_FILE} -v2c -c ${COMMUNITY} ${SNMP_HOST} ${SNMP_FLUIDFS_VolUsed}.${VolID}`
   local VolUsed=${VolUsed//\"}
 
   local Size=$(toXB $VolSize)
@@ -124,10 +124,10 @@ checkVolume () {
   fi
 
   # Checking volumes
-  local VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
+  local VOLIDS=`snmpwalk -m ${MIB_FILE} -v2c -c ${COMMUNITY} ${SNMP_HOST} ${SNMP_FLUIDFS_VolIndex} | cut -d' ' -f 4`
   for ID in $VOLIDS; do
     # Getting Volume Name and cleaning it.
-    VolName=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
+    VolName=`snmpwalk -O Qv -m ${MIB_FILE} -v2c -c ${COMMUNITY} ${SNMP_HOST} ${SNMP_FLUIDFS_VolName}.${ID}`
     VolName=${VolName//\"}
 
     if [ "$VolName" == "$volume" ] || [ $discover -eq 1 ]; then
