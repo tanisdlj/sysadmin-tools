@@ -1,10 +1,34 @@
 #!/bin/bash
 
-# /usr/share/mibs/ with rx perms - FluidFS-MIB.txt
+# Nagios script to discover or check Dell Equallogic FluidFS Volumes.
+# Needs to read the MIBS file that you should find under:
+# ftp://yourEQLipORurl:44421/mibs/FluidFS-MIB.txt
+# You should place it under /usr/share/mibs/ with rx perms so Nagios
+# can read it or properly install it for your SNMP in your nagios host
 
-COMMUNITY=""
+# 19/09/2016 diego.lucas.jimenez@gmail.com initial version
+
 SNMP_HOST=""
-MIB_FILE=""
+COMMUNITY="public"
+MIB_FILE="/usr/share/mibs/FluidFS-MIB.txt"
+WARNING=90
+CRITICAL=95
+
+usage () {
+  echo "  Discover or check Dell Equallogic FluidFS Volumes."
+  echo "  Usage: check_eqlfs_volumes.sh [-h|--help] | [-D] | [-H \$HOST] [-C \$COMMUNITY] [-M \$MIB] [-v \$volume] [-w \$warning] [-c \$critical]"
+  echo "  ~# check_eqlfs_volumes.sh -H eql.acme.com -C communString -v volume_users -w 80 -c 90"
+  echo "  30 of 120 removed, keeping 90"
+  echo ""
+  echo "    -h | --help   : Shows this message"
+  echo "    -D            : Shows all the volumes"
+  echo "    -H \$host     : Host or ip"
+  echo "    -C \$community: SNMP Community string (default public)"
+  echo "    -M \$MIB      : FluidFS MIB file (default /usr/share/mibs/FluidFS-MIB.txt)"
+  echo "    -v \$volume   : Volume to check"
+  echo "    -w \$warning  : Warning level (default 90%)"
+  echo "    -c \$critical : Critical level (default 95%)"
+}
 
 toXB () {
   local arg1=$1
@@ -61,9 +85,9 @@ while [ "$#" -gt 0 ]; do
     -m) MIB_FILE="$2"; shift 2;;
 
     # Specific arguments
-    -v) target="$2"; shift 2;;
-    -w) startTime="$2"; shift 2;;
-    -c) endTime="$2"; shift 2;;
+    -v) volume="$2"; shift 2;;
+    -w) warning="$2"; shift 2;;
+    -c) critical="$2"; shift 2;;
 
     # Other args
     -h) usage; exit 0;;
