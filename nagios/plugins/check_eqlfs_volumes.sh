@@ -91,24 +91,34 @@ toPercentage () {
   echo $perc
 }
 
+calcFree () {
+  local used=$1
+  local total=$2
+  local freeMB=`echo "scale=2;$total-$used" | bc`
+  free=$(toXB $freeMB)
+  echo "${free}"
+}
+
 # Extracts the data from the requested volume
 getVolData () {
   local VolID=$1
   local VolName=$2
 
   local VolSize=`snmpwalk -O Qv -m ${MIB_FILE} -v2c -c ${COMMUNITY} ${SNMP_HOST} ${SNMP_FLUIDFS_VolSize}.${VolID}`
-  local VolSize=${VolSize//\"}
+  VolSize=${VolSize//\"}
   local VolUsed=`snmpwalk -O Qv -m ${MIB_FILE} -v2c -c ${COMMUNITY} ${SNMP_HOST} ${SNMP_FLUIDFS_VolUsed}.${VolID}`
-  local VolUsed=${VolUsed//\"}
+  VolUsed=${VolUsed//\"}
 
   local Size=$(toXB $VolSize)
   local Used=$(toXB $VolUsed)
   local PercUsed=$(toPercentage ${VolUsed} ${VolSize})
+  local Free=$(calcFree ${VolUsed} ${VolSize})
+  local perf="'used'=$Used, 'size'=$Size, 'free'=$Free, 'percent used'=$PercUsed%;$WARNING;$CRITICAL";
 
   local volData="$VolName ($PercUsed %) $Used / $Size (ID ${VolID//\"})"
 
   if [ $discover -eq 0 ]; then
-    checkUsage "$PercUsed" "$volData"
+    checkUsage "$PercUsed" "$volData" "$perf"
   else
     echo "$volData"
   fi
@@ -146,6 +156,8 @@ checkVolume () {
 checkUsage () {
   local perc=$1
   local volData="$2"
+  local perf="$3"
+
   local checkStatus="UNKNOWN:"
   local exitCode=3
 
@@ -160,7 +172,7 @@ checkUsage () {
     exitCode=0
   fi
 
-  echo "$checkStatus $volData"
+  echo "$checkStatus $volData | $perf"
   exit $exitCode
 }
 
