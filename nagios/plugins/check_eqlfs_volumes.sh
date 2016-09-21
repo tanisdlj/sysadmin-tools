@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# /usr/share/mibs/ with rx perms
+# /usr/share/mibs/ with rx perms - FluidFS-MIB.txt
 
 COMMUNITY=""
 SNMP_HOST=""
+MIB_FILE=""
 
 toXB () {
   local arg1=$1
@@ -27,16 +28,16 @@ toPercentage () {
 }
 
 checkAll () {
-  VOLIDS=`snmpwalk -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
+  VOLIDS=`snmpwalk -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeIndex | cut -d' ' -f 4`
   echo "Volume Name (ID) Used Space / Total Space (Percentage Used)"
   echo "############################################"
 
   for ID in $VOLIDS; do
-    VolName=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
+    VolName=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeVolumeName.$ID`
     VolName=${VolName//\"}
-    VolSize=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
+    VolSize=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeSizeMB.$ID`
     VolSize=${VolSize//\"}
-    VolUsed=`snmpwalk -O Qv -m /root/.snmp/mibs/FluidFS-MIB.txt -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
+    VolUsed=`snmpwalk -O Qv -m $MIB_FILE -v2c -c $COMMUNITY $SNMP_HOST FLUIDFS-MIB::nASVolumeUsedSpaceMB.$ID`
     VolUsed=${VolUsed//\"}
 
     Size=$(toXB $VolSize)
