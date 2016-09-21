@@ -1,13 +1,23 @@
 #!/bin/bash
 
 # Nagios script to discover or check Dell Equallogic FluidFS Volumes.
-# Needs to read the MIBS file that you should find under:
+# Writen by Diego Lucas Jimenez, 2016, for Projectplace.
+
+# It needs to read the MIBS file that you should find under:
 # ftp://yourEQLipORurl:44421/mibs/FluidFS-MIB.txt
 # You should place it under /usr/share/mibs/ with rx perms so Nagios
 # can read it or properly install it for your SNMP in your nagios host
 
 # 19/09/2016 diego.lucas.jimenez@gmail.com initial version
 
+readonly VERSION="1.0"
+readonly SNMP_FLUIDFS_VolSize="FLUIDFS-MIB::nASVolumeSizeMB"
+readonly SNMP_FLUIDFS_VolUsed="FLUIDFS-MIB::nASVolumeUsedSpaceMB"
+readonly SNMP_FLUIDFS_VolIndex="FLUIDFS-MIB::nASVolumeIndex"
+readonly SNMP_FLUIDFS_VolName="FLUIDFS-MIB::nASVolumeVolumeName"
+
+
+# User Args
 discover=0
 SNMP_HOST=""
 COMMUNITY="public"
@@ -16,11 +26,13 @@ volume=""
 WARNING=90
 CRITICAL=95
 
+# Functions to be called
 setup () {
   checkArgs
   checkVolume
 }
 
+# Checking the provided arguments are right
 checkArgs () {
   # Host
   if [ -z "$SNMP_HOST" ]; then
@@ -39,11 +51,12 @@ checkArgs () {
   fi
 }
 
+# Help / Usage function
 usage () {
   echo "  Discover or check Dell Equallogic FluidFS Volumes."
   echo "  Usage: check_eqlfs_volumes.sh [-h|--help] | [-D] | [-H \$HOST] [-C \$COMMUNITY] [-M \$MIB] [-v \$volume] [-w \$warning] [-c \$critical]"
   echo "  ~# check_eqlfs_volumes.sh -H eql.acme.com -C communString -v volume_users -w 80 -c 90"
-  echo "  30 of 120 removed, keeping 90"
+  echo "  OK: volume_users (42.54 %) 638.23 GB / 1.46 TB (ID 42424242)"
   echo ""
   echo "    -h | --help   : Shows this message"
   echo "    -D            : Shows all the volumes"
@@ -55,6 +68,7 @@ usage () {
   echo "    -c \$critical : Critical level (default 95%)"
 }
 
+# Converts MBs to Human-readable data
 toXB () {
   local arg1=$1
   local inGB=`bc <<< "scale=2;${arg1}/1024"`
@@ -69,6 +83,7 @@ toXB () {
   fi
 }
 
+# Calculates used space percentage
 toPercentage () {
   local used=$1
   local total=$2
@@ -76,6 +91,7 @@ toPercentage () {
   echo $perc
 }
 
+# Extracts the data from the requested volume
 getVolData () {
   local VolID=$1
   local VolName=$2
@@ -98,6 +114,7 @@ getVolData () {
   fi
 }
 
+# Get a list of the volumes and process it
 checkVolume () {
   local volFound=0
   # Discovery mode
@@ -125,6 +142,7 @@ checkVolume () {
   fi
 }
 
+# Check for Nagios alerts
 checkUsage () {
   local perc=$1
   local volData="$2"
@@ -147,7 +165,6 @@ checkUsage () {
 }
 
 # Args management
-
 if [ "$#" -eq 0 ]; then
   echo "ERROR: Arguments required"
   usage
@@ -157,6 +174,8 @@ fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     # Select operation to perform
+    -V) echo "check_eqlfs_volumes.sh VERSION $VERSION"; exit 0;;
+    --version) echo "check_eqlfs_volumes.sh VERSION $VERSION"; exit 0;;
     -D) discover=1; shift 1;;
 
     # Parameters
