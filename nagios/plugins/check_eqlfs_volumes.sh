@@ -8,9 +8,10 @@
 # You should place it under /usr/share/mibs/ with rx perms so Nagios
 # can read it or properly install it for your SNMP in your nagios host
 
-# 19/09/2016 diego.lucas.jimenez@gmail.com initial version
+# 19/09/2016 Initial version
+# 04/10/2016 Added performance data
 
-readonly VERSION="1.0"
+readonly VERSION="1.1"
 readonly SNMP_FLUIDFS_VolSize="FLUIDFS-MIB::nASVolumeSizeMB"
 readonly SNMP_FLUIDFS_VolUsed="FLUIDFS-MIB::nASVolumeUsedSpaceMB"
 readonly SNMP_FLUIDFS_VolIndex="FLUIDFS-MIB::nASVolumeIndex"
@@ -113,7 +114,7 @@ getVolData () {
   local Used=$(toXB $VolUsed)
   local PercUsed=$(toPercentage ${VolUsed} ${VolSize})
   local Free=$(calcFree ${VolUsed} ${VolSize})
-  local perf="'used'=$Used, 'size'=$Size, 'free'=$Free, 'percent used'=$PercUsed%;$WARNING;$CRITICAL";
+  local perf="'percent used'=$PercUsed;$WARNING;$CRITICAL;;100"
 
   local volData="$VolName ($PercUsed %) $Used / $Size (ID ${VolID//\"})"
 
