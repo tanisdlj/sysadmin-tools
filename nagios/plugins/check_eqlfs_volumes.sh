@@ -114,7 +114,7 @@ getVolData () {
   local Used=$(toXB $VolUsed)
   local PercUsed=$(toPercentage ${VolUsed} ${VolSize})
   local Free=$(calcFree ${VolUsed} ${VolSize})
-  local perf="'percent used'=$PercUsed;$WARNING;$CRITICAL;;100"
+  local perf="'Usage percentage'=$PercUsed%;$WARNING;$CRITICAL;;"
 
   local volData="$VolName ($PercUsed %) $Used / $Size (ID ${VolID//\"})"
 
