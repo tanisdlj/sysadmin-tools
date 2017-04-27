@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# Nagios script to check ElasticSearch health.
+# Writen by Diego Lucas Jimenez, 2017, for Projectplace.
+
+# Dependencies: curl
+
+# 19/09/2016 Initial version
+
+# help
+#  curl "***REMOVED***:9200/_cat/nodes?help"
+# Heap crit and warn against average
+# ***REMOVED***:9200/_cat/nodes/?h=name,ram.percent,heap.percent,file_desc.percent,load_5m
+
+VERSION=0.1
+readonly me=`basename "$0"`
+
+HOST=""
+PORT=9200
+NODES=
+
+warning=90
+critical=95
+
+setup () {
+  fetch_data
+  filter_data
+  split_data
+  heap_data
+  ram_data
+  filedesc_data
+  load_data
+}
+
+#heap_percent=`curl "***REMOVED***:9200/_cat/nodes?h=heap.percent"`
+
+fetch_data () {
+  fetched_data=$(curl -s "$HOST:$PORT/_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_15m")
+  local IFS=' '
+  local arraypos=0
+  while read line; do
+#    echo "SPLIT ${line}"
+    cluster_data[$arraypos]=${line}
+    arraypos=$(($arraypos+1))
+  done <<< ${fetched_data}
+#  echo "ARRAY ${cluster_data[0]}"
+}
+
+filter_data () {
+  for line in "${cluster_data[@]}"; do
+    if [[ $line == *"$HOST"* ]]; then
+#      echo "FILTERED $line"
+      host_data=${line}
+    fi
+  done
+}
+
+split_data () {
+  IFS=' ' read -ra split_data <<< $host_data
+#  for data in "${split_data[@]}"; do
+#    echo "split $data"
+#  done
+}
+
+heap_data () {
+  heap_data=${split_data[1]}
+  echo "heap usage $heap_data %"
+}
+
+ram_data () {
+  ram_data=${split_data[2]}
+  echo "ram usage $ram_data %"
+}
+
+filedesc_data () {
+  filedesc_data=${split_data[3]}
+  echo "file desc $filedesc_data"
+}
+
+load_data () {
+  load_data=${split_data[4]}
+  echo "load 15m $load_data"
+}
+
+# Checking the provided arguments are right
+checkArgs () {
+  # Host
+  if [ -z "$SNMP_HOST" ]; then
+    echo "ERROR: No host defined"
+    exit 3
+  fi
+  # Volume
+  if [ "$discover" -eq 0 ] && [ -z "$volume" ]; then
+    echo "ERROR: No volume defined"
+    exit 3
+  fi
+  # Check MIB file
+  if [ ! -r "$MIB_FILE" ]; then
+    echo "ERROR: MIB file not found or permission problem"
+    exit 3
+  fi
+}
+
+version () {
+  echo "$me VERSION $VERSION"
+  exit 0;
+}
+
+# Help / Usage function
+usage () {
+  echo "  Checks Elasticsearch health."
+  echo "  Usage: check_elasticsearch [-h|--help] | [-v|--version] | [-H \$HOST] [-w \$warning] [-c \$critical]"
+  echo "  ~# check_elasticsearch -H elasticsearch.acme.com -w 80 -c 90"
+  echo "  OK: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  echo ""
+  echo "    -H \$host      : Host or ip"
+  echo "    -w \$warning   : Warning level (default 90%)"
+  echo "    -c \$critical  : Critical level (default 95%)"
+  echo "    -V | --version : Prints plugin version"
+  echo "    -h | --help    : Shows this message"
+}
+
+# Args management
+if [ "$#" -eq 0 ]; then
+  echo "ERROR: Arguments required"
+  usage
+  exit 3
+fi
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    # Select operation to perform
+    -V) version;;
+    --version) version;;
+
+    # Parameters
+    -H) HOST="$2"; shift 2;;
+
+    # Specific arguments
+    -w) warning="$2"; shift 2;;
+    -c) critical="$2"; shift 2;;
+
+    # Other args
+    -h) usage; exit 0;;
+    --help) usage; exit 0;;
+    *) echo "ERROR: Unknown option $1"; usage; exit 3;;
+  esac
+done
+
+setup
+
