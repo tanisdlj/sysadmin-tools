@@ -10,8 +10,9 @@
 
 # 19/09/2016 Initial version
 # 04/10/2016 Added performance data
+# 27/04/2017 Added version info
 
-readonly VERSION="1.1"
+readonly VERSION="1.2"
 readonly SNMP_FLUIDFS_VolSize="FLUIDFS-MIB::nASVolumeSizeMB"
 readonly SNMP_FLUIDFS_VolUsed="FLUIDFS-MIB::nASVolumeUsedSpaceMB"
 readonly SNMP_FLUIDFS_VolIndex="FLUIDFS-MIB::nASVolumeIndex"
@@ -50,23 +51,6 @@ checkArgs () {
     echo "ERROR: MIB file not found or permission problem"
     exit 3
   fi
-}
-
-# Help / Usage function
-usage () {
-  echo "  Discover or check Dell Equallogic FluidFS Volumes."
-  echo "  Usage: check_eqlfs_volumes.sh [-h|--help] | [-D] | [-H \$HOST] [-C \$COMMUNITY] [-M \$MIB] [-v \$volume] [-w \$warning] [-c \$critical]"
-  echo "  ~# check_eqlfs_volumes.sh -H eql.acme.com -C communString -v volume_users -w 80 -c 90"
-  echo "  OK: volume_users (42.54 %) 638.23 GB / 1.46 TB (ID 42424242)"
-  echo ""
-  echo "    -h | --help   : Shows this message"
-  echo "    -D            : Shows all the volumes"
-  echo "    -H \$host     : Host or ip"
-  echo "    -C \$community: SNMP Community string (default public)"
-  echo "    -M \$MIB      : FluidFS MIB file (default /usr/share/mibs/FluidFS-MIB.txt)"
-  echo "    -v \$volume   : Volume to check"
-  echo "    -w \$warning  : Warning level (default 90%)"
-  echo "    -c \$critical : Critical level (default 95%)"
 }
 
 # Converts MBs to Human-readable data
@@ -175,6 +159,24 @@ checkUsage () {
 
   echo "$checkStatus $volData | $perf"
   exit $exitCode
+}
+
+# Help / Usage function
+usage () {
+  echo "  Discover or check Dell Equallogic FluidFS Volumes."
+  echo "  Usage: check_eqlfs_volumes.sh [-h|--help] | [-v|--version] | [-D] | [-H \$HOST] [-C \$COMMUNITY] [-M \$MIB] [-v \$volume] [-w \$warning] [-c \$critical]"
+  echo "  ~# check_eqlfs_volumes.sh -H eql.acme.com -C communString -v volume_users -w 80 -c 90"
+  echo "  OK: volume_users (42.54 %) 638.23 GB / 1.46 TB (ID 42424242)"
+  echo ""
+  echo "    -h | --help   : Shows this message"
+  echo "    -V | --version : Prints plugin version"
+  echo "    -D            : Shows all the volumes"
+  echo "    -H \$host     : Host or ip"
+  echo "    -C \$community: SNMP Community string (default public)"
+  echo "    -M \$MIB      : FluidFS MIB file (default /usr/share/mibs/FluidFS-MIB.txt)"
+  echo "    -v \$volume   : Volume to check"
+  echo "    -w \$warning  : Warning level (default 90%)"
+  echo "    -c \$critical : Critical level (default 95%)"
 }
 
 # Args management
