@@ -131,7 +131,18 @@ heap_data () {
 ram_data () {
   set_levels ram
   ram_usage=${split_data[2]}
-  echo "ram usage $ram_usage %"
+  local perf_data="| heap=$ram_usage%;$warning;$critical;0;100"
+  local err_code=3
+
+  if [[ $ram_usage -gt $critical ]]; then
+    err_code=2
+  elif [[ $ram_usage -gt $warning ]]; then
+    err_code=1
+  else
+    err_code=0
+  fi
+
+  nagios_output "RAM usage $ram_usage %; " "$perf_data" "$err_code"
 }
 
 filedesc_data () {
