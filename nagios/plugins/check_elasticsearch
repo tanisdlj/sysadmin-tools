@@ -3,7 +3,7 @@
 # Nagios script to check ElasticSearch health.
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
 
-# Dependencies: curl
+# Dependencies: curl bc
 
 # 19/09/2016 Initial version
 
@@ -11,6 +11,23 @@
 #  curl "***REMOVED***:9200/_cat/nodes?help"
 # Heap crit and warn against average
 # ***REMOVED***:9200/_cat/nodes/?h=name,ram.percent,heap.percent,file_desc.percent,load_5m
+
+# https://www.datadoghq.com/blog/monitor-elasticsearch-performance-metrics/#toc-memory-usage-and-garbage-collection
+# To control
+# Search performance:
+# search.query_time ms?
+# search.query_current Number of queries
+# search.fetch_current Number of fetches in progress now
+# search.fetch_time Total time spent on fetches
+# search.fetch_total Total number of fetches
+# Indexing performance
+# refresh 10-20 warning.
+
+# Time per doc:
+# indexing.index_time * 3600 *1000 ms / 
+# indexing.index_total docs
+# = ms / doc
+
 
 VERSION=0.3
 readonly me=`basename "$0"`
@@ -117,7 +134,7 @@ heap_data () {
     err_code=0
   fi
 
-  nagios_output "Heap usage $heap_usage %; " "$perf_data" "$err_code"
+  nagios_output "Heap usage $heap_usage%; " "$perf_data" "$err_code"
 }
 
 ram_data () {
@@ -134,7 +151,7 @@ ram_data () {
     err_code=0
   fi
 
-  nagios_output "RAM usage $ram_usage %; " "$perf_data" "$err_code"
+  nagios_output "RAM usage $ram_usage%; " "$perf_data" "$err_code"
 }
 
 filedesc_data () {
@@ -151,13 +168,24 @@ filedesc_data () {
     err_code=0
   fi
 
-  nagios_output "File descriptors usage $filedesc_usage %; " "$perf_data" "$err_code"
+  nagios_output "File descriptors usage $filedesc_usage%; " "$perf_data" "$err_code"
 }
 
 load_data () {
   set_levels load
-  load_data=${split_data[4]}
-  echo "load 5m $load_data"
+  load_usage=${split_data[4]}
+  local perf_data="| load=$load_usage;$warning;$critical;0;"
+  local err_code=3
+
+  if (( $(echo "$load_usage > $critical" | bc -l) )); then
+    err_code=2
+  elif (( $(echo "$load_usage > $warning" | bc -l) )); then
+    err_code=1
+  else
+    err_code=0
+  fi
+
+  nagios_output "Load avg 5m $load_usage; " "$perf_data" "$err_code"
 }
 
 # Checking the provided arguments are right
@@ -180,7 +208,7 @@ version () {
 # Help / Usage function
 usage () {
   echo "  Checks Elasticsearch health."
-  echo "  Usage: check_elasticsearch [-h|--help] | [-v|--version] | [-H \$HOST] [-w \$warning] [-c \$critical]"
+  echo "  Usage: check_elasticsearch [-h|--help] | [-v|--version] | [-H \$HOST] [-o \$option][-w \$warning] [-c \$critical]"
   echo "  ~# check_elasticsearch -H elasticsearch.acme.com -w 80 -c 90"
   echo "  OK: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
   echo ""
@@ -190,6 +218,7 @@ usage () {
   echo "    -o \$option    : Option to check:"
   echo "       heap        : Heap usage percentage (w:85;c:90)"
   echo "       ram         : Ram usage percentage (w:85;c:90)"
+  echo "                     High RAM allocation may occur if MAX_LOCKED_MEMORY is set to unlimited"
   echo "       filedesc    : Used file descriptor ratio (w:85;c:90)"
   echo "       load5       : Host load 5m (w:1;c:1.5)"
 
