@@ -19,17 +19,22 @@ HOST=""
 PORT=9200
 NODES=
 
-warning=90
-critical=95
+option=
+
+warning=
+critical=
 
 setup () {
   fetch_data
   filter_data
   split_data
-  heap_data
-  ram_data
-  filedesc_data
-  load_data
+  case $option in
+    heap) heap_data;;
+    ram) ram_data;;
+    filedesc) filedesc_data;;
+    load5) load_data;;
+    cluster_health);;
+  esac
 }
 
 error () {
@@ -40,7 +45,7 @@ error () {
 #heap_percent=`curl "***REMOVED***:9200/_cat/nodes?h=heap.percent"`
 
 fetch_data () {
-  fetched_data=$(curl -s "$HOST:$PORT/_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_15m") || error "Host not found" $?
+  fetched_data=$(curl -s "$HOST:$PORT/_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_5m") || error "Host not found" $?
   local IFS=' '
   local arraypos=0
   while read line; do
@@ -67,42 +72,88 @@ split_data () {
 #  done
 }
 
+set_levels () {
+  if [ -z "$warning" ]; then
+    case "$1" in
+      heap) warning=85;;
+      ram) warning=85;;
+      filedesc) warning=2;;
+      load) warning=1;;
+    esac
+  fi
+
+
+  if [ -z "$critical" ];
+    case "$1" in
+      heap) critical=90;;
+      ram) critical=90;;
+      filedesc) critical=4;;
+      load) critical=1.5;;
+    esac
+  fi
+}
+
+nagios_output () {
+  local err_code=$3
+  local message=$1
+  local perfdata=$2
+  local output=""
+
+  case $err_code in
+    0) output="OK - ";;
+    1) output="WARNING - ";;
+    2) output="CRITICAL - ";;
+    *) output="UNKNOWN - "; err_code=3;;
+  esac
+
+  echo $output $message $perfdata
+  exit $err_code ;
+}
+
 heap_data () {
-  heap_data=${split_data[1]}
-  echo "heap usage $heap_data %"
+  set_levels heap
+  heap_usage=${split_data[1]}
+  local perf_data="| heap=$heap_usage%;$warning;$critical;0;100"
+  local err_code=3
+
+  if [[ $heap_usage -gt $critical ]]; then
+    err_code=2
+  elif [[ $heap_usage -gt $warning ]]; then
+    err_code=1
+  else
+    err_code=0
+  fi
+
+  nagios_output "Heap usage $heap_usage %; " "$perf_data" "$err_code"
 }
 
 ram_data () {
-  ram_data=${split_data[2]}
-  echo "ram usage $ram_data %"
+  set_levels ram
+  ram_usage=${split_data[2]}
+  echo "ram usage $ram_usage %"
 }
 
 filedesc_data () {
+  set_levels filedesc
   filedesc_data=${split_data[3]}
   echo "file desc $filedesc_data"
 }
 
 load_data () {
+  set_levels load
   load_data=${split_data[4]}
-  echo "load 15m $load_data"
+  echo "load 5m $load_data"
 }
 
 # Checking the provided arguments are right
 checkArgs () {
   # Host
-  if [ -z "$SNMP_HOST" ]; then
-    echo "ERROR: No host defined"
-    exit 3
+  if [ -z "$HOST" ]; then
+    error "No host defined" 3
   fi
-  # Volume
-  if [ "$discover" -eq 0 ] && [ -z "$volume" ]; then
-    echo "ERROR: No volume defined"
-    exit 3
-  fi
-  # Check MIB file
-  if [ ! -r "$MIB_FILE" ]; then
-    echo "ERROR: MIB file not found or permission problem"
-    exit 3
+  # Options
+  if [ -z "$option" ]; then
+    error "Please, choose an option to run" 3
   fi
 }
 
@@ -119,8 +170,16 @@ usage () {
   echo "  OK: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
   echo ""
   echo "    -H \$host      : Host or ip"
-  echo "    -w \$warning   : Warning level (default 90%)"
-  echo "    -c \$critical  : Critical level (default 95%)"
+  echo "    -P \$port      : Port, default 9200"
+
+  echo "    -o \$option    : Option to check:"
+  echo "       heap        : Heap usage percentage (w:85;c:90)"
+  echo "       ram         : Ram usage percentage (w:85;c:90)"
+  echo "       filedesc    : File descriptors ???? (w:2;c:4)"
+  echo "       load5       : Host load 5m (w:1;c:1.5)"
+
+  echo "    -w \$warning   : Warning level"
+  echo "    -c \$critical  : Critical level"
   echo "    -V | --version : Prints plugin version"
   echo "    -h | --help    : Shows this message"
 }
@@ -135,17 +194,19 @@ fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     # Select operation to perform
-    -V) version;;
-    --version) version;;
-
+    -o) option="$2"; shift 2;;
     # Parameters
     -H) HOST="$2"; shift 2;;
+    -P) PORT="$2"; shift 2;;
 
     # Specific arguments
     -w) warning="$2"; shift 2;;
     -c) critical="$2"; shift 2;;
 
     # Other args
+    -V) version;;
+    --version) version;;
+
     -h) usage; exit 0;;
     --help) usage; exit 0;;
     *) echo "ERROR: Unknown option $1"; usage; exit 3;;
