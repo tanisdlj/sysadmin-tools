@@ -34,6 +34,7 @@ setup () {
     filedesc) filedesc_data;;
     load5) load_data;;
     cluster_health);;
+    *) error "Unknown option" 1
   esac
 }
 
@@ -83,7 +84,7 @@ set_levels () {
   fi
 
 
-  if [ -z "$critical" ];
+  if [ -z "$critical" ]; then
     case "$1" in
       heap) critical=90;;
       ram) critical=90;;
