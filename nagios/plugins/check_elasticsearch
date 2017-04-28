@@ -70,7 +70,7 @@ set_levels () {
     case "$1" in
       heap) warning=85;;
       ram) warning=85;;
-      filedesc) warning=2;;
+      filedesc) warning=80;;
       load) warning=1;;
     esac
   fi
@@ -80,7 +80,7 @@ set_levels () {
     case "$1" in
       heap) critical=90;;
       ram) critical=90;;
-      filedesc) critical=4;;
+      filedesc) critical=90;;
       load) critical=1.5;;
     esac
   fi
@@ -140,7 +140,7 @@ ram_data () {
 filedesc_data () {
   set_levels filedesc
   filedesc_usage=${split_data[3]}
-  local perf_data="| heap=$filedesc_usage%;$warning;$critical;0;100"
+  local perf_data="| filedesc=$filedesc_usage%;$warning;$critical;0;100"
   local err_code=3
 
   if [[ $filedesc_usage -gt $critical ]]; then
@@ -151,7 +151,7 @@ filedesc_data () {
     err_code=0
   fi
 
-  nagios_output "File descriptors usage $filedesc_usage; " "$perf_data" "$err_code"
+  nagios_output "File descriptors usage $filedesc_usage %; " "$perf_data" "$err_code"
 }
 
 load_data () {
@@ -190,7 +190,7 @@ usage () {
   echo "    -o \$option    : Option to check:"
   echo "       heap        : Heap usage percentage (w:85;c:90)"
   echo "       ram         : Ram usage percentage (w:85;c:90)"
-  echo "       filedesc    : File descriptors ???? (w:2;c:4)"
+  echo "       filedesc    : Used file descriptor ratio (w:85;c:90)"
   echo "       load5       : Host load 5m (w:1;c:1.5)"
 
   echo "    -w \$warning   : Warning level"
