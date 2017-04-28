@@ -139,8 +139,19 @@ ram_data () {
 
 filedesc_data () {
   set_levels filedesc
-  filedesc_data=${split_data[3]}
-  echo "file desc $filedesc_data"
+  filedesc_usage=${split_data[3]}
+  local perf_data="| heap=$filedesc_usage%;$warning;$critical;0;100"
+  local err_code=3
+
+  if [[ $filedesc_usage -gt $critical ]]; then
+    err_code=2
+  elif [[ $filedesc_usage -gt $warning ]]; then
+    err_code=1
+  else
+    err_code=0
+  fi
+
+  nagios_output "File descriptors usage $filedesc_usage; " "$perf_data" "$err_code"
 }
 
 load_data () {
