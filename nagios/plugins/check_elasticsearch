@@ -43,22 +43,25 @@ critical=
 
 setup () {
   checkArgs
-  fetch_data
-  filter_data
-  split_data
   case $option in
-    heap) heap_data;;
-    ram) ram_data;;
-    filedesc) filedesc_data;;
-    load5) load_data;;
-    cluster_health);;
+    heap) node_data; heap_data;;
+    ram) node_data; ram_data;;
+    filedesc) node_data; filedesc_data;;
+    load5) node_data; load_data;;
     *) error "Unknown option" 1
   esac
+  
 }
 
 error () {
   echo "ERROR: $1"
   exit $2
+}
+
+node_data () {
+  fetch_data
+  filter_data
+  split_data
 }
 
 fetch_data () {
