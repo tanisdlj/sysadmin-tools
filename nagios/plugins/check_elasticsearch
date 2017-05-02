@@ -44,11 +44,12 @@ critical=
 setup () {
   checkArgs
   case $option in
-    heap) node_data; heap_data;;
-    ram) node_data; ram_data;;
-    filedesc) node_data; filedesc_data;;
-    load5) node_data; load_data;;
-    *) error "Unknown option" 1
+    heap) fetch_data node; heap_data;;
+    ram) fetch_data node; ram_data;;
+    filedesc) fetch_data node; filedesc_data;;
+    load5) fetch_data node; load_data;;
+    health) fetch_data health; cluster_health;;
+    *) error "Unknown option" 1;;
   esac
   
 }
@@ -58,13 +59,26 @@ error () {
   exit $2
 }
 
-node_data () {
-  fetch_data
+fetch_data () {
+  case $1 in
+    node) node_data;;
+    health) health_data;;
+  esac
   filter_data
   split_data
 }
 
-fetch_data () {
+health_data () {
+  fetched_data=$(curl -s "$HOST:$PORT/_cat/health?h=status,relo,init,unassign,active_shards_percent") || error "Host not found" $?
+  local IFS=' '
+  local arraypos=0
+  while read line; do
+    cluster_data[$arraypos]=${line}
+    arraypos=$(($arraypos+1))
+  done <<< ${fetched_data}
+}
+
+node_data () {
   fetched_data=$(curl -s "$HOST:$PORT/_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_5m") || error "Host not found" $?
   local IFS=' '
   local arraypos=0
@@ -76,7 +90,7 @@ fetch_data () {
 
 filter_data () {
   for line in "${cluster_data[@]}"; do
-    if [[ $line == *"$HOST"* ]]; then
+    if [[ $option -eq "health" ]] || [[ $line == *"$HOST"* ]]; then
       host_data=${line}
     fi
   done
@@ -93,6 +107,7 @@ set_levels () {
       ram) warning=85;;
       filedesc) warning=80;;
       load) warning=1;;
+      cluster_health) warning="yellow";;
     esac
   fi
 
@@ -103,6 +118,7 @@ set_levels () {
       ram) critical=90;;
       filedesc) critical=90;;
       load) critical=1.5;;
+      cluster_health) critical="red";;
     esac
   fi
 }
@@ -124,6 +140,7 @@ nagios_output () {
   exit $err_code ;
 }
 
+# NODE
 heap_data () {
   set_levels heap
   heap_usage=${split_data[1]}
@@ -192,6 +209,25 @@ load_data () {
   nagios_output "Load avg 5m $load_usage; " "$perf_data" "$err_code"
 }
 
+# CLUSTER
+
+cluster_health () {
+  set_levels cluster_health
+  cluster_health=${split_data[0]}
+  local perf_data=""
+  local err_code=3
+echo "$cluster_health, crit: $critical, warn: $warning"
+  if [[ ${cluster_health} == ${critical} ]]; then
+    err_code=2
+  elif [[ ${cluster_health} == ${warning} ]]; then
+    err_code=1
+  else
+    err_code=0
+  fi
+
+  nagios_output "Cluster health status: $cluster_health; " "$perf_data" "$err_code"
+}
+
 # Checking the provided arguments are right
 checkArgs () {
   # Host
@@ -225,6 +261,7 @@ usage () {
   echo "                     High RAM allocation may occur if MAX_LOCKED_MEMORY is set to unlimited"
   echo "       filedesc    : Used file descriptor ratio (w:85;c:90)"
   echo "       load5       : Host load 5m (w:1;c:1.5)"
+  echo "       health      : Cluster health (w:Yellow;c:Red)"
 
   echo "    -w \$warning   : Warning level"
   echo "    -c \$critical  : Critical level"
