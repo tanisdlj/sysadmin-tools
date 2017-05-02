@@ -42,6 +42,7 @@ warning=
 critical=
 
 setup () {
+  checkArgs
   fetch_data
   filter_data
   split_data
