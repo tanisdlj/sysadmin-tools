@@ -8,9 +8,9 @@
 # 19/09/2016 Initial version
 
 # help
-#  curl "***REMOVED***:9200/_cat/nodes?help"
+#  curl "hostname:9200/_cat/nodes?help"
 # Heap crit and warn against average
-# ***REMOVED***:9200/_cat/nodes/?h=name,ram.percent,heap.percent,file_desc.percent,load_5m
+# hostname:9200/_cat/nodes/?h=name,ram.percent,heap.percent,file_desc.percent,load_5m
 
 # https://www.datadoghq.com/blog/monitor-elasticsearch-performance-metrics/#toc-memory-usage-and-garbage-collection
 # To control
