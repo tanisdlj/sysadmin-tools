@@ -24,7 +24,7 @@
 # refresh 10-20 warning.
 
 
-VERSION=1.1
+VERSION=1.2
 readonly me=`basename "$0"`
 
 API_CLUSTER="_cat/health?h=status,relo,init,unassign,active_shards_percent"
@@ -255,6 +255,14 @@ checkArgs () {
   # Options
   if [ -z "$option" ]; then
     error "Please, choose an option to run" 3
+  fi
+  # Warn threshold
+  if ! [[ "$warning" =~ ^-?[0-9]$ ]]; then
+    error "Warning value must be an integer" 3
+  fi
+  # Crit threshold
+  if ! [[ "$critical" =~ ^-?[0-9]$ ]]; then
+    error "Critical value must be an integer" 3
   fi
 }
 
