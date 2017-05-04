@@ -24,7 +24,7 @@
 # refresh 10-20 warning.
 
 
-VERSION=1.2.4
+VERSION=1.2.5
 readonly me=`basename "$0"`
 
 API_CLUSTER="_cat/health?h=status,relo,init,unassign,active_shards_percent"
@@ -102,7 +102,7 @@ set_levels () {
       filedesc) warning=80;;
       load) warning=1;;
       cluster_health) warning="yellow";;
-      index_time) warning="0.001";;
+      index_time) warning="1";;
     esac
   fi
 
@@ -114,7 +114,7 @@ set_levels () {
       filedesc) critical=90;;
       load) critical=1.5;;
       cluster_health) critical="red";;
-      index_time) critical="0.002";;
+      index_time) critical="2";;
     esac
   fi
 }
@@ -212,8 +212,8 @@ index_time () {
   local index_time=${split_data[1]}
   local index_time=${index_time:0:-1}
   local index_total=${split_data[2]}
-  local index_time_per_doc=`bc -l <<< "scale=6; ${index_time} * 3600 / $index_total" `
-  local perf_data="| index_time_per_doc=0${index_time_per_doc}s;${warning};${critical};0;"
+  local index_time_per_doc=`bc -l <<< "scale=6; ${index_time} * 3600 * 1000 / $index_total" `
+  local perf_data="| index_time_per_doc=0${index_time_per_doc}ms;${warning};${critical};0;"
   local err_code=3
   if (( $(echo "${index_time_per_doc} > ${critical}" | bc -l) )); then
     err_code=2
@@ -223,7 +223,7 @@ index_time () {
     err_code=0
   fi
 
-  nagios_output "Time indexing per doc: 0${index_time_per_doc}s; " "${perf_data}" "${err_code}"
+  nagios_output "Time indexing per doc: 0${index_time_per_doc}ms; " "${perf_data}" "${err_code}"
 }
 
 # CLUSTER
