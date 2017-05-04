@@ -23,14 +23,13 @@
 # Indexing performance
 # refresh 10-20 warning.
 
-# Time per doc:
-# indexing.index_time * 3600 *1000 ms / 
-# indexing.index_total docs
-# = ms / doc
 
-
-VERSION=0.9
+VERSION=1.1
 readonly me=`basename "$0"`
+
+API_CLUSTER="_cat/health?h=status,relo,init,unassign,active_shards_percent"
+API_NODE="_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_5m"
+API_INDEX="_cat/nodes?h=name,indexing.index_time,indexing.index_total"
 
 HOST=""
 PORT=9200
@@ -49,9 +48,9 @@ setup () {
     filedesc) fetch_data node; filedesc_data;;
     load5) fetch_data node; load_data;;
     health) fetch_data health; cluster_health;;
+    index-time) fetch_data index-time; index_time;;
     *) error "Unknown option" 1;;
   esac
-  
 }
 
 error () {
@@ -61,25 +60,20 @@ error () {
 
 fetch_data () {
   case $1 in
-    node) node_data;;
-    health) health_data;;
+    node) local data_option="$API_NODE";;
+    health) local data_option="$API_CLUSTER";;
+    index-time) local data_option="$API_INDEX";;
+    *) error "something went really wrong" 3;;
   esac
+  fetch_api_data "$data_option"
   filter_data
   split_data
 }
 
-health_data () {
-  fetched_data=$(curl -s "$HOST:$PORT/_cat/health?h=status,relo,init,unassign,active_shards_percent") || error "Host not found" $?
-  local IFS=' '
-  local arraypos=0
-  while read line; do
-    cluster_data[$arraypos]=${line}
-    arraypos=$(($arraypos+1))
-  done <<< ${fetched_data}
-}
 
-node_data () {
-  fetched_data=$(curl -s "$HOST:$PORT/_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_5m") || error "Host not found" $?
+fetch_api_data () {
+  local API_CALL=$1
+  fetched_data=$(curl -s "$HOST:$PORT/$API_CALL") || error "Host not found" $?
   local IFS=' '
   local arraypos=0
   while read line; do
@@ -90,7 +84,7 @@ node_data () {
 
 filter_data () {
   for line in "${cluster_data[@]}"; do
-    if [[ $option -eq "health" ]] || [[ $line == *"$HOST"* ]]; then
+    if [[ $option == "health" ]] || [[ $line == *"$HOST"* ]]; then
       host_data=${line}
     fi
   done
@@ -108,6 +102,7 @@ set_levels () {
       filedesc) warning=80;;
       load) warning=1;;
       cluster_health) warning="yellow";;
+      index_time) warning=10;;
     esac
   fi
 
@@ -119,6 +114,7 @@ set_levels () {
       filedesc) critical=90;;
       load) critical=1.5;;
       cluster_health) critical="red";;
+      index_time) critical=20;;
     esac
   fi
 }
@@ -209,6 +205,29 @@ load_data () {
   nagios_output "Load avg 5m $load_usage; " "$perf_data" "$err_code"
 }
 
+# INDEXING
+
+index_time () {
+  set_levels index_time
+  local index_time=${split_data[1]}
+#echo "${index_time} <-- in hours in theory"
+  local index_time=${index_time:0:-1}
+  local index_total=${split_data[2]}
+  local index_time_per_doc=`bc -l <<< "scale=3; ${index_time} * 3600 * 1000 / $index_total" `
+#echo "${index_time} * 3600 * 1000 / $index_total"
+  local perf_data="| index_time_per_doc=$index_time_per_doc ms;$warning;$critical;0;"
+  local err_code=3
+  if (( $(echo "$index_time_per_doc > $critical" | bc -l) )); then
+    err_code=2
+  elif (( $(echo "$index_time_per_doc > $warning" | bc -l) )); then
+    err_code=1
+  else
+    err_code=0
+  fi
+
+  nagios_output "Time indexing per doc: $index_time_per_doc ms; " "$perf_data" "$err_code"
+}
+
 # CLUSTER
 
 cluster_health () {
@@ -216,7 +235,6 @@ cluster_health () {
   cluster_health=${split_data[0]}
   local perf_data=""
   local err_code=3
-echo "$cluster_health, crit: $critical, warn: $warning"
   if [[ ${cluster_health} == ${critical} ]]; then
     err_code=2
   elif [[ ${cluster_health} == ${warning} ]]; then
@@ -262,6 +280,7 @@ usage () {
   echo "       filedesc    : Used file descriptor ratio (w:85;c:90)"
   echo "       load5       : Host load 5m (w:1;c:1.5)"
   echo "       health      : Cluster health (w:Yellow;c:Red)"
+  echo "       index-time  : Indexing time per doc (w:;c:)"
 
   echo "    -w \$warning   : Warning level"
   echo "    -c \$critical  : Critical level"
