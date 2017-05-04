@@ -24,7 +24,7 @@
 # refresh 10-20 warning.
 
 
-VERSION=1.2.1
+VERSION=1.2.2
 readonly me=`basename "$0"`
 
 API_CLUSTER="_cat/health?h=status,relo,init,unassign,active_shards_percent"
@@ -215,7 +215,7 @@ index_time () {
   local index_total=${split_data[2]}
   local index_time_per_doc=`bc -l <<< "scale=3; ${index_time} * 3600 * 1000 / $index_total" `
 #echo "${index_time} * 3600 * 1000 / $index_total"
-  local perf_data="| index_time_per_doc=$index_time_per_doc ms;$warning;$critical;0;"
+  local perf_data="| index_time_per_doc=${index_time_per_doc}ms;$warning;$critical;0;"
   local err_code=3
   if (( $(echo "$index_time_per_doc > $critical" | bc -l) )); then
     err_code=2
