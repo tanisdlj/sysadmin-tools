@@ -102,7 +102,7 @@ set_levels () {
       filedesc) warning=80;;
       load) warning=1;;
       cluster_health) warning="yellow";;
-      index_time) warning=10;;
+      index_time) warning=2;;
     esac
   fi
 
@@ -114,7 +114,7 @@ set_levels () {
       filedesc) critical=90;;
       load) critical=1.5;;
       cluster_health) critical="red";;
-      index_time) critical=20;;
+      index_time) critical=4;;
     esac
   fi
 }
@@ -267,8 +267,8 @@ version () {
 usage () {
   echo "  Checks Elasticsearch health."
   echo "  Usage: check_elasticsearch [-h|--help] | [-v|--version] | [-H \$HOST] [-o \$option][-w \$warning] [-c \$critical]"
-  echo "  ~# check_elasticsearch -H elasticsearch.acme.com -w 80 -c 90"
-  echo "  OK: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  echo "  ~# check_elasticsearch -H elasticsearch.acme.com -o heap -w 90 -c 95"
+  echo "  OK - Heap usage 29%; | heap=29%;90;95;0;100"
   echo ""
   echo "    -H \$host      : Host or ip"
   echo "    -P \$port      : Port, default 9200"
@@ -280,7 +280,7 @@ usage () {
   echo "       filedesc    : Used file descriptor ratio (w:85;c:90)"
   echo "       load5       : Host load 5m (w:1;c:1.5)"
   echo "       health      : Cluster health (w:Yellow;c:Red)"
-  echo "       index-time  : Indexing time per doc (w:;c:)"
+  echo "       index-time  : Indexing time per doc (w:2;c:4)"
 
   echo "    -w \$warning   : Warning level"
   echo "    -c \$critical  : Critical level"
