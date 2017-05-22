@@ -74,7 +74,7 @@ fetch_data () {
 
 fetch_api_data () {
   local API_CALL=$1
-  fetched_data=$(curl -s "$HOST:$PORT/$API_CALL") || error "Host not found" $?
+  fetched_data=$(curl -s "$HOST:$PORT/$API_CALL") || error "Host not found: $?" 3
   local IFS=' '
   local arraypos=0
   while read line; do
