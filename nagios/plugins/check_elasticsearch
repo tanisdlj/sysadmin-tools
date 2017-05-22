@@ -31,10 +31,12 @@ readonly me=`basename "$0"`
 API_CLUSTER="_cat/health?h=status,relo,init,unassign,active_shards_percent"
 API_NODE="_cat/nodes?h=name,heap.percent,ram.percent,file_desc.percent,load_5m"
 API_INDEX="_cat/nodes?h=name,indexing.index_time,indexing.index_total"
+API_SEARCH_FETCH="_cat/nodes?h=name,search.fetch_time,search.fetch_total"
 
 HOST=""
 PORT=9200
 NODES=
+NODE=""
 
 option=
 
@@ -67,6 +69,7 @@ fetch_data () {
     *) error "something went really wrong" 3;;
   esac
   fetch_api_data "$data_option"
+  set_node
   filter_data
   split_data
 }
@@ -83,12 +86,21 @@ fetch_api_data () {
   done <<< ${fetched_data}
 }
 
+set_node () {
+  if [ -n "$NODE" ]; then
+    HOST="$NODE"
+  fi
+}
+
 filter_data () {
+  local found=false
   for line in "${cluster_data[@]}"; do
     if [[ $option == "health" ]] || [[ $line == *"$HOST"* ]]; then
       host_data=${line}
+      local found=true
     fi
   done
+  $found || error "Node not found" $?
 }
 
 split_data () {
@@ -309,6 +321,7 @@ while [ "$#" -gt 0 ]; do
     # Parameters
     -H) HOST="$2"; shift 2;;
     -P) PORT="$2"; shift 2;;
+    -n) NODE="$2"; shift 2;;
 
     # Specific arguments
     -w) warning="$2"; shift 2;;
