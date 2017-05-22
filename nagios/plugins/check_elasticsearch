@@ -4,6 +4,7 @@
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
 
 # Dependencies: curl bc
+# The node needs to have http module enabled in order to query it
 
 # 19/09/2016 Initial version
 
