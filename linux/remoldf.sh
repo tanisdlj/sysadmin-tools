@@ -37,10 +37,10 @@ info () {
 simulate () {
   if [ $simulate -eq 1 ]; then
     echo ""
-    echo "Deleted files: "
+    echo "[SIM] Deleted files: "
     find "$FOLDER" -maxdepth 1 -type f -mtime +${DAYS} | sort
     echo ""
-    echo "Files left: "
+    echo "[SIM] Files left: "
     find "$FOLDER" -maxdepth 1 -type f -mtime ${DAYS}
     find "$FOLDER" -maxdepth 1 -type f -mtime -${DAYS} | sort
     echo ""
