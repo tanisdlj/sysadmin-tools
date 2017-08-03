@@ -55,7 +55,7 @@ remove () {
 
 usage () {
   echo "  Remove files older than \$days files in a given \$path."
-  echo "  Usage: remoldf.sh [-h|--help] | [-k \$days] [-f \$path]"
+  echo "  Usage: remoldf.sh [-h] | [-q]  [-s] -k \$days -f \$path"
   echo "  ~# ./remoldf.sh -k 90 -f /backup/mystuff"
   echo "  30 of 120 removed, keeping 90"
   echo ""
