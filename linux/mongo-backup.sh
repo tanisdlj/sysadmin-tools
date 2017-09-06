@@ -5,6 +5,10 @@
 # usage
 # lock file
 
+# Backup location
+readonly FULL_PATH="/backup/mongo/full"
+readonly INCREMENTAL_PATH='/backup/mongo/incremental'
+
 # LVM where Mongo data is stored
 readonly VOLUME_GROUP='mongo_data'
 readonly LOGICAL_VOLUME='mongodata'
@@ -16,14 +20,10 @@ readonly RESTORE_NAME='mongo-restore'
 readonly RESTORE_PATH="/dev/${VOLUME_GROUP}/${RESTORE_NAME}"
 
 # LVM Snapshot settings
-readonly SNAPSHOT_SIZE='100G'
+readonly SNAPSHOT_SIZE='10G'
 readonly SNAPSHOT_NAME='mongo-snapshot'
 readonly SNAPSHOT_PATH="/dev/${VOLUME_GROUP}/${SNAPSHOT_NAME}"
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
-
-# Backup location
-readonly FULL_PATH="/backup/mongo/full"
-readonly INCREMENTAL_PATH='/backup/mongo/incremental'
 
 # Mongo oplog incremental backup
 readonly INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
@@ -34,7 +34,8 @@ readonly LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
 
 # Restore file, provided as argument
 BACKUP_FILE=''
-
+BACKUP=false
+RESTORE=false
 # Mongo info
 MONGO_VERSION=0
 MONGO_STORAGE=""
@@ -122,7 +123,7 @@ createSnapshot () {
 }
 
 mountSnapshot () {
-  if [ ! -d "${SNAPSHOT_MNT}" ]
+  if [ ! -d "${SNAPSHOT_MNT}" ]; then
     mkdir ${SNAPSHOT_MNT}
   fi
 
@@ -171,7 +172,7 @@ archiveIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
-  BACKUP_FILE=$1
+  
   lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $VOLUME_GROUP
   gzip -d -c ${BACKUP_FILE} | dd of=${RESTORE_PATH}
   mount ${RESTORE_PATH} ${MONGO_DATA}
@@ -181,7 +182,6 @@ restoreFullBackup () {
 ### INCREMENTAL ###
 
 restoreIncrementalBackup () {
-  BACKUP_FILE=$1
   TMP_FOLDER='/tmp/mongorestore/oplog.bson'
   cp ${BACKUP_FILE} ${TMP_FOLDER}
   mongorestore --oplogReplay ${TMP_FOLDER}
@@ -198,7 +198,7 @@ setupBackup () {
   case "$BACKUP_TYPE" in
     "full" ) setupFullBackup;;
     "incremental" ) setupIncrementalBackup;;
-    *) errormsg 'Wrong backup type';;
+    *) errormsg "Wrong backup type $BACKUP_TYPE";;
   esac
 }
 
@@ -221,19 +221,20 @@ setupIncrementalBackup () {
 
 setupRestore () {
   case "$RESTORE_TYPE" in
-    "full" ) restoreFullBackup;;
-    "incremental" ) restoreIncrementalBackup;;
-    *) errormsg 'Wrong backup type';;
+    "full" ) setupFullRestore;;
+    "incremental" ) setupIncrementalRestore;;
+    *) errormsg "Wrong backup type $RESTORE_TYPE";;
   esac
 }
 
-restoreFullBackup () {
+setupFullRestore () {
   stopMongo
   startMongo
 }
 
-restoreIncrementalBackup () {
-
+setupIncrementalRestore () {
+  stopMongo
+  startMongo
 }
 
 #######################################
@@ -241,12 +242,12 @@ restoreIncrementalBackup () {
 checkArgs () {
   if $BACKUP && $RESTORE; then
     errormsg 'Select either backup or restore'
-  elif $BACKUP && [ -z $BACKUP_TYPE ]; then
+  elif $BACKUP && [ ! -z "$BACKUP_TYPE" ] && [ -z "$BACKUP_FILE" ]; then
     setupBackup
-  elif $RESTORE && [ -z $RESTORE_TYPE ]; then
+  elif $RESTORE && [ ! -z "$RESTORE_TYPE" ] && [ ! -z "$BACKUP_FILE" ]; then
     setupRestore
   else
-    errormsg 'Wrong arguments'
+    errormsg 'Something went wrong. Check the arguments'
   fi
 }
 
@@ -259,13 +260,18 @@ setup () {
 }
 
 # Args handler
+if [ $# -eq 0 ] || [[ $(( $# % 2 )) -eq 1 ]]; then
+  errormsg 'Wrong number of arguments'
+fi
+
 
 while [ "$#" -gt 0 ]; do
   case $1 in
     -B) BACKUP=true; BACKUP_TYPE=$2; shift 2;;
     -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
+    -f) BACKUP_FILE=$2; shift 2;;
     -h) usage; exit 0;;
-    *) echo "ERROR: Invalid option ($opt)"; usage; exit 2;;
+    *) echo "ERROR: Invalid option"; usage; exit 2;;
   esac
 done
 
