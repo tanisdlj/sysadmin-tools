@@ -111,15 +111,20 @@ lastOplogPosition () {
 }
 
 errormsg () {
-  echo "ERROR: $1"
+  echo "  ERROR: $1"
   exit 1
 }
 
 ######### FULL  #########
 
 createSnapshot () {
-  lvcreate --snapshot --size $SNAPSHOT_SIZE --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
-  echo "Snapshot created"
+  if [ -d $LVM_PATH ]; then
+    lvcreate --snapshot --size $SNAPSHOT_SIZE \
+      --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
+    echo "Snapshot created"
+  else
+    errormsg "$LVM_PATH not found"
+  fi
 }
 
 mountSnapshot () {
@@ -203,6 +208,7 @@ setupBackup () {
 }
 
 setupFullBackup () {
+  echo "  Full Backup selected"
 #  stopMongo
   createSnapshot
   lastOplogPosition
@@ -211,6 +217,7 @@ setupFullBackup () {
 }
 
 setupIncrementalBackup () {
+  echo "  Incremental Backup selected"
   stopMongo
   archiveIncrementalBackup
   lastOplogPosition
