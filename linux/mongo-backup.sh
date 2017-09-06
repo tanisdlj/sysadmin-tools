@@ -101,11 +101,13 @@ startMongo () {
 ########################### BACKUP ##############################
 
 lastOplogPosition () {
+  echo "  Storing last Oplog time"
   LASTOP_TIME=`mongo --eval 'printjson(db.getSiblingDB("local").oplog.rs.find().sort({$natural:-1}).limit(1).next().ts)' | grep Timestamp`
   if [ -z "$LASTOP_TIME" ]; then
     echo "ERROR: Cannot retrieve last Oplog operation time"
     exit 1
   else
+    echo "    Stored in ${LAST_OPLOG_FILE}"
     echo "${LASTOP_TIME}" >> ${LAST_OPLOG_FILE}
   fi
 }
@@ -118,16 +120,17 @@ errormsg () {
 ######### FULL  #########
 
 createSnapshot () {
-  if [ -d $LVM_PATH ]; then
+  if [ -e $LVM_PATH ]; then
     lvcreate --snapshot --size $SNAPSHOT_SIZE \
       --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
-    echo "Snapshot created"
+    echo "  Snapshot created"
   else
     errormsg "$LVM_PATH not found"
   fi
 }
 
 mountSnapshot () {
+  echo "  Mounting ${SNAPSHOT_MNT}"
   if [ ! -d "${SNAPSHOT_MNT}" ]; then
     mkdir ${SNAPSHOT_MNT}
   fi
@@ -139,18 +142,22 @@ archiveFullBackup () {
   NOW=$(date +"%F_%R")
   local FULL_FILE="${FULL_PATH}/mongoFull.${NOW}.gz"
 
+  echo "  Archiving $FULL_FILE"
+
 #  echo "${LASTOP_TIME}" >> ${SNAPSHOT_MNT}/mongo_last_oplog.time
 #  tar -pczf ${FULL_FILE} ${SNAPSHOT_MNT}
   umount ${SNAPSHOT_PATH} > /dev/null 2>&1
 
-  if [ -d "{FULL_PATH}" ]; then
-    dd if=${SNAPSHOT_PATH} | gzip ${FULL_FILE}
+  if [ -d "${FULL_PATH}" ]; then
+    dd if=${SNAPSHOT_PATH} | gzip > ${FULL_FILE}
   else
+    removeSnapshot
     errormsg "Path ${FULL_PATH} not accessible"
   fi
 }
 
 removeSnapshot () {
+  echo "  Removing ${SNAPSHOT_PATH}"
   umount ${SNAPSHOT_PATH} > /dev/null 2>&1
   lvremove -f ${SNAPSHOT_PATH} || { errormsg "Failed removing snapshot ${SNAPSHOT_PATH}"; }
 }
