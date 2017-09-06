@@ -16,7 +16,7 @@ readonly RESTORE_NAME='mongo-restore'
 readonly RESTORE_PATH="/dev/${VOLUME_GROUP}/${RESTORE_NAME}"
 
 # LVM Snapshot settings
-readonly SNAPSHOT_SIZE='10G'
+readonly SNAPSHOT_SIZE='100G'
 readonly SNAPSHOT_NAME='mongo-snapshot'
 readonly SNAPSHOT_PATH="/dev/${VOLUME_GROUP}/${SNAPSHOT_NAME}"
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
@@ -44,7 +44,10 @@ OLD_VERSION=
 WIRED_TIGER=
 ISMASTER=
 
+NOW=$(date +"%F_%R")
 #LASTOP_TIME=""
+
+###################### GENERIC FUNCTIONS ########################
 
 checkMongoVersion () {
   MONGO_VERSION=`mongod --version | grep -v git | cut -d' ' -f 3`
@@ -76,6 +79,8 @@ checkMongoMaster () {
   fi
 }
 
+#################### START / STOP MONGO #########################
+
 stopMongo () {
   if $OLD_VERSION && $WIRED_TIGER; then
     service moongod stop
@@ -92,24 +97,7 @@ startMongo () {
   fi
 }
 
-createSnapshot () {
-  lvcreate --snapshot --size $SNAPSHOT_SIZE --name $SNAPSHOT_NAME $LVM_PATH
-
-  if $?; then
-    echo "Snapshot created"
-  else
-    echo "ERROR: Snapshot failed"
-    exit 1
-  fi
-}
-
-mountSnapshot () {
-  if [ ! -d "${SNAPSHOT_MNT}" ]
-    mkdir ${SNAPSHOT_MNT}
-  fi
-
-  mount ${SNAPSHOT_PATH} ${SNAPSHOT_MNT}
-}
+########################### BACKUP ##############################
 
 lastOplogPosition () {
   LASTOP_TIME=`mongo --eval 'printjson(db.getSiblingDB("local").oplog.rs.find().sort({$natural:-1}).limit(1).next().ts)' | grep Timestamp`
@@ -121,24 +109,52 @@ lastOplogPosition () {
   fi
 }
 
+errormsg () {
+  echo "ERROR: $1"
+  exit 1
+}
+
+######### FULL  #########
+
+createSnapshot () {
+  lvcreate --snapshot --size $SNAPSHOT_SIZE --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
+  echo "Snapshot created"
+}
+
+mountSnapshot () {
+  if [ ! -d "${SNAPSHOT_MNT}" ]
+    mkdir ${SNAPSHOT_MNT}
+  fi
+
+  mount ${SNAPSHOT_PATH} ${SNAPSHOT_MNT}
+}
+
 archiveFullBackup () {
-  local now=$(date +"%Y_%m_%d")
-  local FULL_FILE="${FULL_PATH}/mongoFull_${now}.gz"
+  NOW=$(date +"%F_%R")
+  local FULL_FILE="${FULL_PATH}/mongoFull.${NOW}.gz"
 
 #  echo "${LASTOP_TIME}" >> ${SNAPSHOT_MNT}/mongo_last_oplog.time
 #  tar -pczf ${FULL_FILE} ${SNAPSHOT_MNT}
   umount ${SNAPSHOT_PATH} > /dev/null 2>&1
-  dd if=${SNAPSHOT_PATH} | gzip ${FULL_PATH}/mongoFull_${now}.gz
+
+  if [ -d "{FULL_PATH}" ]; then
+    dd if=${SNAPSHOT_PATH} | gzip ${FULL_FILE}
+  else
+    errormsg "Path ${FULL_PATH} not accessible"
+  fi
 }
 
 removeSnapshot () {
   umount ${SNAPSHOT_PATH} > /dev/null 2>&1
-  lvremove -f ${SNAPSHOT_PATH}
+  lvremove -f ${SNAPSHOT_PATH} || { errormsg "Failed removing snapshot ${SNAPSHOT_PATH}"; }
 }
 
+
+####### INCREMENTAL #######
+
 archiveIncrementalBackup () {
-  local now=$(date +"%m_%d_%Y")
-  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${now}.bson"
+  NOW=$(date +"%F_%R")
+  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
 
   local MDBDUMP_OPTIONS="-d local -c oplog.rs -o ${INCREMENTAL_PATH}"
   local LAST_BACKUP_TIME=`cat ${LAST_OPLOG_FILE}`
@@ -148,12 +164,21 @@ archiveIncrementalBackup () {
   mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE}
 }
 
+
+####################### RESTORE ############################
+
+
+### FULL ###
+
 restoreFullBackup () {
   BACKUP_FILE=$1
   lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $VOLUME_GROUP
   gzip -d -c ${BACKUP_FILE} | dd of=${RESTORE_PATH}
   mount ${RESTORE_PATH} ${MONGO_DATA}
 }
+
+
+### INCREMENTAL ###
 
 restoreIncrementalBackup () {
   BACKUP_FILE=$1
@@ -162,22 +187,44 @@ restoreIncrementalBackup () {
   mongorestore --oplogReplay ${TMP_FOLDER}
 }
 
-setupFullBackup () {
+############# SETUP #################
+
+### BACKUP ###
+setupBackup () {
+  checkMongoVersion
+  checkMongoEngine
   checkMongoMaster
+
+  case "$BACKUP_TYPE" in
+    "full" ) setupFullBackup;;
+    "incremental" ) setupIncrementalBackup;;
+    *) errormsg 'Wrong backup type';;
+  esac
+}
+
+setupFullBackup () {
 #  stopMongo
   createSnapshot
   lastOplogPosition
-  mountSnapshot
   archiveFullBackup
 #  startMongo
 }
 
 setupIncrementalBackup () {
-  checkMongoMaster
   stopMongo
   archiveIncrementalBackup
   lastOplogPosition
   startMongo
+}
+
+### RESTORE ###
+
+setupRestore () {
+  case "$RESTORE_TYPE" in
+    "full" ) restoreFullBackup;;
+    "incremental" ) restoreIncrementalBackup;;
+    *) errormsg 'Wrong backup type';;
+  esac
 }
 
 restoreFullBackup () {
@@ -189,11 +236,37 @@ restoreIncrementalBackup () {
 
 }
 
-setup () {
-  checkMongoVersion
-  checkMongoEngine
+#######################################
+
+checkArgs () {
+  if $BACKUP && $RESTORE; then
+    errormsg 'Select either backup or restore'
+  elif $BACKUP && [ -z $BACKUP_TYPE ]; then
+    setupBackup
+  elif $RESTORE && [ -z $RESTORE_TYPE ]; then
+    setupRestore
+  else
+    errormsg 'Wrong arguments'
+  fi
 }
 
-#Args handler
+usage () {
+  echo "USAGE!"
+}
+
+setup () {
+  checkArgs
+}
+
+# Args handler
+
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    -B) BACKUP=true; BACKUP_TYPE=$2; shift 2;;
+    -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
+    -h) usage; exit 0;;
+    *) echo "ERROR: Invalid option ($opt)"; usage; exit 2;;
+  esac
+done
 
 setup
