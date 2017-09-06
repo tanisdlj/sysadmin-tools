@@ -20,7 +20,7 @@ readonly RESTORE_NAME='mongo-restore'
 readonly RESTORE_PATH="/dev/${VOLUME_GROUP}/${RESTORE_NAME}"
 
 # LVM Snapshot settings
-readonly SNAPSHOT_SIZE='10G'
+SNAPSHOT_SIZE='100G'
 readonly SNAPSHOT_NAME='mongo-snapshot'
 readonly SNAPSHOT_PATH="/dev/${VOLUME_GROUP}/${SNAPSHOT_NAME}"
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
@@ -55,7 +55,7 @@ checkMongoVersion () {
   local VERSIONTMP="${MONGO_VERSION//.}"
   local VERSION="${VERSIONTMP//v}"
 
-  if [ "${VERSION}" -gt "3200" ]; then
+  if [ "${VERSION}" -lt "3200" ]; then
     OLD_VERSION=true
   else
     OLD_VERSION=false
@@ -108,7 +108,7 @@ lastOplogPosition () {
     exit 1
   else
     echo "    Stored in ${LAST_OPLOG_FILE}"
-    echo "${LASTOP_TIME}" >> ${LAST_OPLOG_FILE}
+    echo "${LASTOP_TIME}" > ${LAST_OPLOG_FILE}
   fi
 }
 
@@ -220,6 +220,7 @@ setupFullBackup () {
   createSnapshot
   lastOplogPosition
   archiveFullBackup
+  removeSnapshot
 #  startMongo
 }
 
@@ -282,6 +283,8 @@ fi
 while [ "$#" -gt 0 ]; do
   case $1 in
     -B) BACKUP=true; BACKUP_TYPE=$2; shift 2;;
+    -S) SNAPSHOT_SIZE=$2; shift 2;;
+
     -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
     -f) BACKUP_FILE=$2; shift 2;;
     -h) usage; exit 0;;
