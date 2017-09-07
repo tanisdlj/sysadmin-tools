@@ -169,12 +169,23 @@ removeSnapshot () {
 archiveIncrementalBackup () {
   NOW=$(date +"%F_%R")
   local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
-
   local MDBDUMP_OPTIONS="-d local -c oplog.rs -o ${INCREMENTAL_PATH}"
-  local LAST_BACKUP_TIME=`cat ${LAST_OPLOG_FILE}`
 
+  if [ -e ${LAST_OPLOG_FILE} ]; then
+    local LAST_BACKUP_TIME=`cat ${LAST_OPLOG_FILE}`
+  else
+    errormsg "${LAST_OPLOG_FILE} not found or permissions problem"
+  fi
+
+  echo "Performing incremental backup"
   mongodump ${MDBDUMP_OPTIONS} --query '{ "ts" : { $gt :  '"${LAST_BACKUP_TIME}"' } }'
   rm ${INCREMENTAL_JSON}
+
+  if [ -d "${INCREMENTAL_PATH}" ]; then
+    echo "  WARNING: ${INCREMENTAL_PATH} not found. Trying to create"
+    mkdir -p ${INCREMENTAL_PATH} || { errormsg "${INCREMENTAL_PATH} dir creation failed. Permissions problem?"; }
+  fi
+
   mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE}
 }
 
