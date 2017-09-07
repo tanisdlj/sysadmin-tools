@@ -279,7 +279,26 @@ checkArgs () {
 }
 
 usage () {
-  echo "USAGE!"
+  echo "Backup or restore a mongo database, both incremental and full backups."
+  echo " Usage:"
+  echo "  $(basename $0) -B \$backup_mode [-S \$snapshot_size] [-P \$backup_path] [options] " 
+  echo "  $(basename $0) -R \$restore_mode -f \$restore_file [options] "
+  echo ""
+  echo " -B \$backup_mode   : Perform backup in a backup_mode, either 'full' or 'incremental'"
+  echo " -S \$snapshot_size : Specify the max size of the snapshot (optional)"
+  echo "                       default: '100G'"
+  echo " -P \$backup_path   : Set the directory where the backups will be stored (optional)"
+  echo "                       default: '/backup/mongo'"
+  echo ""
+  echo " -R \$restore_mode  : Restore a type of backup, either 'full' or 'incremental'"
+  echo " -f \$restore_file  : Set the file from which the restore will be done"
+  echo ""
+  echo " Options:"
+  echo "  -G \$lvm_group    :  Set the LVM group where mongo data is, or where is going to be (optional)"
+  echo "                       default: 'mongo_data'"
+  echo "  -V \$lvm_name     :  Set the LVM Volume name where mongo data is, or where is going to be (optional)"
+  echo "                       default: 'mongodata'"
+
 }
 
 setup () {
