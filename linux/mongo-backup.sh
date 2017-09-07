@@ -178,7 +178,8 @@ archiveIncrementalBackup () {
   fi
 
   echo "Performing incremental backup"
-  mongodump ${MDBDUMP_OPTIONS} --query '{ "ts" : { $gt :  '"${LAST_BACKUP_TIME}"' } }'
+  mongodump ${MDBDUMP_OPTIONS} --query '{ "ts" : { $gt :  '"${LAST_BACKUP_TIME}"' } }' \
+    || { errormsg "Error getting oplog with mongodump ${MDBDUMP_OPTIONS} from ${LAST_BACKUP_TIME}"; }
   rm ${INCREMENTAL_JSON}
 
   if [ -d "${INCREMENTAL_PATH}" ]; then
@@ -186,7 +187,7 @@ archiveIncrementalBackup () {
     mkdir -p ${INCREMENTAL_PATH} || { errormsg "${INCREMENTAL_PATH} dir creation failed. Permissions problem?"; }
   fi
 
-  mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE}
+  mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE} "; }
 }
 
 
