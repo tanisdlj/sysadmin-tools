@@ -189,9 +189,17 @@ archiveIncrementalBackup () {
 
 restoreFullBackup () {
   
-  lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP
-  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH}
-  mount ${RESTORE_PATH} ${MONGO_DATA}
+  lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
+
+  if [ -e ${RESTORE_FILE} ]; then
+    gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH}
+
+    if [ ! -d ${MONGO_DATA} ]; then
+      echo " WARNING: ${MONGO_DATA} not found, trying to create the dir..."
+      mkdir -p ${MONGO_DATA}
+    fi
+    mount ${RESTORE_PATH} ${MONGO_DATA}
+  fi
 }
 
 
