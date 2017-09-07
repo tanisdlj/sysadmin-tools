@@ -5,58 +5,33 @@
 # usage
 # lock file
 
-# Args handler
-if [ $# -eq 0 ] || [[ $(( $# % 2 )) -eq 1 ]]; then
-  usage
-  echo ""
-  errormsg 'Wrong number of arguments'
-fi
-
-
-while [ "$#" -gt 0 ]; do
-  case $1 in
-    -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
-    -S) SNAPSHOT_SIZE=$2; shift 2;;
-
-    -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
-    -f) RESTORE_FILE=$2; shift 2;;
-
-    -P) BACKUP_PATH=$2; shift 2;;
-
-    -G) LVM_GROUP=$2; shift 2;;
-    -V) LVM_NAME=$2; shift 2;;
-
-    -h) usage; exit 0;;
-    *) usage; echo ""; echo "ERROR: Invalid option"; exit 2;;
-  esac
-done
-
-# Backup location
-BACKUP_PATH='/backup/mongo'
-readonly FULL_PATH="${BACKUP_PATH}/full"
-readonly INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
-
-# Mongo oplog incremental backup
-readonly INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
-readonly INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
-
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
 LVM_NAME='mongodata'
-readonly LVM_PATH="/dev/${LVM_GROUP}/${LVM_NAME}"
+LVM_PATH=''
 
-# LVM to restore the backup
-readonly RESTORE_NAME='mongo-restore'
-readonly RESTORE_PATH="/dev/${LVM_GROUP}/${RESTORE_NAME}"
-# Restore file, provided as argument
-RESTORE_FILE=''
-readonly MONGO_DATA='/data'
+# Backup location
+BACKUP_PATH='/backup/mongo'
+FULL_PATH=''
+INCREMENTAL_PATH=''
+
+# Mongo oplog incremental backup
+INCREMENTAL_JSON=''
+INCREMENTAL_BSON=''
 
 # LVM Snapshot settings
 readonly SNAPSHOT_NAME='mongo-snapshot'
-readonly SNAPSHOT_PATH="/dev/${LVM_GROUP}/${SNAPSHOT_NAME}"
+SNAPSHOT_PATH=''
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
 SNAPSHOT_SIZE='100G'
+
+
+# LVM to restore the backup
+readonly RESTORE_NAME='mongo-restore'
+RESTORE_PATH=''
+# Restore file, provided as argument
+RESTORE_FILE=''
+readonly MONGO_DATA='/data'
 
 
 # REVIEW oplog file method, where it is placed (should be on backup/?)
@@ -141,11 +116,6 @@ lastOplogPosition () {
     echo "    Stored in ${LAST_OPLOG_FILE}"
     echo "${LASTOP_TIME}" > ${LAST_OPLOG_FILE}
   fi
-}
-
-errormsg () {
-  echo "  ERROR: $1"
-  exit 1
 }
 
 ######### FULL  #########
@@ -302,6 +272,21 @@ checkArgs () {
   else
     errormsg 'Something went wrong. Check the arguments'
   fi
+  
+  FULL_PATH="${BACKUP_PATH}/full"
+  INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
+  INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
+  INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
+
+  SNAPSHOT_PATH="/dev/${LVM_GROUP}/${SNAPSHOT_NAME}"
+
+  LVM_PATH="/dev/${LVM_GROUP}/${LVM_NAME}"
+
+  RESTORE_PATH="/dev/${LVM_GROUP}/${RESTORE_NAME}"
+}
+
+setup () {
+  checkArgs
 }
 
 usage () {
@@ -327,9 +312,35 @@ usage () {
 
 }
 
-setup () {
-  checkArgs
+errormsg () {
+  echo "  ERROR: $1"
+  exit 1
 }
+
+# Args handler
+if [ $# -eq 0 ] || [[ $(( $# % 2 )) -eq 1 ]]; then
+  usage
+  echo ""
+  errormsg 'Wrong number of arguments'
+fi
+
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
+    -S) SNAPSHOT_SIZE=$2; shift 2;;
+
+    -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
+    -f) RESTORE_FILE=$2; shift 2;;
+
+    -P) BACKUP_PATH=$2; shift 2;;
+
+    -G) LVM_GROUP=$2; shift 2;;
+    -V) LVM_NAME=$2; shift 2;;
+
+    -h) usage; exit 0;;
+    *) usage; echo ""; echo "ERROR: Invalid option"; exit 2;;
+  esac
+done
 
 
 setup
