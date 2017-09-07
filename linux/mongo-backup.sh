@@ -6,8 +6,9 @@
 # lock file
 
 # Backup location
-readonly FULL_PATH="/backup/mongo/full"
-readonly INCREMENTAL_PATH='/backup/mongo/incremental'
+BACKUP_PATH='/backup/mongo'
+readonly FULL_PATH="${BACKUP_PATH}/full"
+readonly INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -289,8 +290,11 @@ while [ "$#" -gt 0 ]; do
 
     -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
     -f) BACKUP_FILE=$2; shift 2;;
+
     -G) LVM_GROUP=$2; shift 2;;
     -V) LVM_NAME=$2; shift 2;;
+    -P) BACKUP_PATH=$2; shift 2;;
+
     -h) usage; exit 0;;
     *) echo "ERROR: Invalid option"; usage; exit 2;;
   esac
