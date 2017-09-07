@@ -187,7 +187,7 @@ archiveIncrementalBackup () {
     mkdir -p ${INCREMENTAL_PATH} || { errormsg "${INCREMENTAL_PATH} dir creation failed. Permissions problem?"; }
   fi
 
-  mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE} "; }
+  mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} || { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE} "; }
 }
 
 
