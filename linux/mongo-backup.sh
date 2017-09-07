@@ -10,18 +10,18 @@ readonly FULL_PATH="/backup/mongo/full"
 readonly INCREMENTAL_PATH='/backup/mongo/incremental'
 
 # LVM where Mongo data is stored
-VOLUME_GROUP='mongo_data'
-LOGICAL_VOLUME='mongodata'
-readonly LVM_PATH="/dev/${VOLUME_GROUP}/${LOGICAL_VOLUME}"
+LVM_GROUP='mongo_data'
+LVM_NAME='mongodata'
+readonly LVM_PATH="/dev/${LVM_GROUP}/${LVM_NAME}"
 readonly MONGO_DATA='/data'
 
 # LVM to restore the backup
 readonly RESTORE_NAME='mongo-restore'
-readonly RESTORE_PATH="/dev/${VOLUME_GROUP}/${RESTORE_NAME}"
+readonly RESTORE_PATH="/dev/${LVM_GROUP}/${RESTORE_NAME}"
 
 # LVM Snapshot settings
 readonly SNAPSHOT_NAME='mongo-snapshot'
-readonly SNAPSHOT_PATH="/dev/${VOLUME_GROUP}/${SNAPSHOT_NAME}"
+readonly SNAPSHOT_PATH="/dev/${LVM_GROUP}/${SNAPSHOT_NAME}"
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
 SNAPSHOT_SIZE='100G'
 
@@ -187,7 +187,7 @@ archiveIncrementalBackup () {
 
 restoreFullBackup () {
   
-  lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $VOLUME_GROUP
+  lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP
   gzip -d -c ${BACKUP_FILE} | dd of=${RESTORE_PATH}
   mount ${RESTORE_PATH} ${MONGO_DATA}
 }
@@ -289,8 +289,8 @@ while [ "$#" -gt 0 ]; do
 
     -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
     -f) BACKUP_FILE=$2; shift 2;;
-    -G) VOLUME_GROUP=$2; shift 2;;
-    -V) LOGICAL_VOLUME=$2; shift 2;;
+    -G) LVM_GROUP=$2; shift 2;;
+    -V) LVM_NAME=$2; shift 2;;
     -h) usage; exit 0;;
     *) echo "ERROR: Invalid option"; usage; exit 2;;
   esac
