@@ -10,17 +10,21 @@ BACKUP_PATH='/backup/mongo'
 readonly FULL_PATH="${BACKUP_PATH}/full"
 readonly INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
 
+# Mongo oplog incremental backup
+readonly INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
+readonly INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
+
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
 LVM_NAME='mongodata'
 readonly LVM_PATH="/dev/${LVM_GROUP}/${LVM_NAME}"
-readonly MONGO_DATA='/data'
 
 # LVM to restore the backup
 readonly RESTORE_NAME='mongo-restore'
 readonly RESTORE_PATH="/dev/${LVM_GROUP}/${RESTORE_NAME}"
 # Restore file, provided as argument
 RESTORE_FILE=''
+readonly MONGO_DATA='/data'
 
 # LVM Snapshot settings
 readonly SNAPSHOT_NAME='mongo-snapshot'
@@ -28,9 +32,6 @@ readonly SNAPSHOT_PATH="/dev/${LVM_GROUP}/${SNAPSHOT_NAME}"
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
 SNAPSHOT_SIZE='100G'
 
-# Mongo oplog incremental backup
-readonly INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
-readonly INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
 
 # REVIEW oplog file method, where it is placed (should be on backup/?)
 readonly LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
@@ -210,10 +211,10 @@ setupBackup () {
   checkMongoEngine
   checkMongoMaster
 
-  case "$BACKUP_TYPE" in
+  case "$BACKUP_MODE" in
     "full" ) setupFullBackup;;
     "incremental" ) setupIncrementalBackup;;
-    *) errormsg "Wrong backup type $BACKUP_TYPE";;
+    *) errormsg "Wrong backup type $BACKUP_MODE";;
   esac
 }
 
@@ -238,10 +239,10 @@ setupIncrementalBackup () {
 ### RESTORE ###
 
 setupRestore () {
-  case "$RESTORE_TYPE" in
+  case "$RESTORE_MODE" in
     "full" ) setupFullRestore;;
     "incremental" ) setupIncrementalRestore;;
-    *) errormsg "Wrong backup type $RESTORE_TYPE";;
+    *) errormsg "Wrong backup type $RESTORE_MODE";;
   esac
 }
 
@@ -260,9 +261,9 @@ setupIncrementalRestore () {
 checkArgs () {
   if $BACKUP && $RESTORE; then
     errormsg 'Select either backup or restore'
-  elif $BACKUP && [ ! -z "$BACKUP_TYPE" ] && [ -z "$RESTORE_FILE" ]; then
+  elif $BACKUP && [ ! -z "$BACKUP_MODE" ] && [ -z "$RESTORE_FILE" ]; then
     setupBackup
-  elif $RESTORE && [ ! -z "$RESTORE_TYPE" ] && [ ! -z "$RESTORE_FILE" ]; then
+  elif $RESTORE && [ ! -z "$RESTORE_MODE" ] && [ ! -z "$RESTORE_FILE" ]; then
     setupRestore
   else
     errormsg 'Something went wrong. Check the arguments'
@@ -285,15 +286,16 @@ fi
 
 while [ "$#" -gt 0 ]; do
   case $1 in
-    -B) BACKUP=true; BACKUP_TYPE=$2; shift 2;;
+    -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
     -S) SNAPSHOT_SIZE=$2; shift 2;;
 
-    -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
+    -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
     -f) RESTORE_FILE=$2; shift 2;;
+
+    -P) BACKUP_PATH=$2; shift 2;;
 
     -G) LVM_GROUP=$2; shift 2;;
     -V) LVM_NAME=$2; shift 2;;
-    -P) BACKUP_PATH=$2; shift 2;;
 
     -h) usage; exit 0;;
     *) echo "ERROR: Invalid option"; usage; exit 2;;
