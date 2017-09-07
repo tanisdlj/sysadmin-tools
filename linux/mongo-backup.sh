@@ -35,7 +35,7 @@ readonly MONGO_DATA='/data'
 
 
 # REVIEW oplog file method, where it is placed (should be on backup/?)
-readonly LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
+LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
 
 
 # Selected option between perform backup or restore.
@@ -321,6 +321,8 @@ usage () {
   echo "                       default: 'mongo_data'"
   echo "  -V \$lvm_name     :  Set the LVM Volume name where mongo data is, or where is going to be (optional)"
   echo "                       default: 'mongodata'"
+  echo "  -t \$last_op_time :  Set the path to the file where the last oplog time is stored, or where is going to be (optional)"
+  echo "                       default: '/opt/mongo_last_oplog.time'"
 
 }
 
@@ -348,6 +350,7 @@ while [ "$#" -gt 0 ]; do
 
     -G) LVM_GROUP=$2; shift 2;;
     -V) LVM_NAME=$2; shift 2;;
+    -t) LAST_OPLOG_FILE=$2; shift 2;;
 
     -h) usage; exit 0;;
     *) usage; echo ""; echo "ERROR: Invalid option"; exit 2;;
