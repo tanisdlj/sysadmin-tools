@@ -309,7 +309,7 @@ usage () {
   echo "  $(basename $0) -R \$restore_mode -f \$restore_file [options] "
   echo ""
   echo " -B \$backup_mode   : Perform backup in a backup_mode, either 'full' or 'incremental'"
-  echo " -S \$snapshot_size : Specify the max size of the snapshot (optional)"
+  echo " -S \$snapshot_size : Specify the max size of the snapshot (optional). Only used for Full mode. Ignored otherwise"
   echo "                       default: '100G'"
   echo " -P \$backup_path   : Set the directory where the backups will be stored (optional)"
   echo "                       default: '/backup/mongo'"
