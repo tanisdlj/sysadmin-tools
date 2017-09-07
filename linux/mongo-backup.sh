@@ -246,7 +246,7 @@ setupRestore () {
   case "$RESTORE_MODE" in
     "full" ) setupFullRestore;;
     "incremental" ) setupIncrementalRestore;;
-    *) errormsg "Wrong backup type $RESTORE_MODE";;
+    *) errormsg "Wrong restore type $RESTORE_MODE";;
   esac
 }
 
@@ -263,15 +263,6 @@ setupIncrementalRestore () {
 #######################################
 
 checkArgs () {
-  if $BACKUP && $RESTORE; then
-    errormsg 'Select either backup or restore'
-  elif $BACKUP && [ ! -z "$BACKUP_MODE" ] && [ -z "$RESTORE_FILE" ]; then
-    setupBackup
-  elif $RESTORE && [ ! -z "$RESTORE_MODE" ] && [ ! -z "$RESTORE_FILE" ]; then
-    setupRestore
-  else
-    errormsg 'Something went wrong. Check the arguments'
-  fi
   
   FULL_PATH="${BACKUP_PATH}/full"
   INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
@@ -283,6 +274,16 @@ checkArgs () {
   LVM_PATH="/dev/${LVM_GROUP}/${LVM_NAME}"
 
   RESTORE_PATH="/dev/${LVM_GROUP}/${RESTORE_NAME}"
+
+  if $BACKUP && $RESTORE; then
+    errormsg 'Select either backup or restore'
+  elif $BACKUP && [ ! -z "$BACKUP_MODE" ] && [ -z "$RESTORE_FILE" ]; then
+    setupBackup
+  elif $RESTORE && [ ! -z "$RESTORE_MODE" ] && [ ! -z "$RESTORE_FILE" ]; then
+    setupRestore
+  else
+    errormsg 'Something went wrong. Check the arguments'
+  fi
 }
 
 setup () {
