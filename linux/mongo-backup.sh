@@ -91,20 +91,20 @@ checkMongoMaster () {
 stopMongo () {
   if $OLD_VERSION && $WIRED_TIGER; then
     echo "  Stopping mongo..."
-    service moongod stop
+    service mongod stop || { errormsg 'Service mongod stop failed'; }
   else
     echo "  Locking mongo writes and flushing operations..."
-    mongo --eval "printjson(db.fsyncLock())"
+    mongo --eval "printjson(db.fsyncLock())" || { errormsg 'Failed fsyncLock'; }
   fi
 }
 
 startMongo () {
   if $OLD_VERSION && $WIRED_TIGER; then
     echo "  Starting mongo..."
-    service mongod start
+    service mongod start || { errormsg 'Service mongod start failed'; }
   else
     echo "  Unlocking mongo writes..."
-    mongo --eval "printjson(db.fsyncUnlock())"
+    mongo --eval "printjson(db.fsyncUnlock())" || { errormsg 'Failed fsyncUnlock'; }
   fi
 }
 
@@ -327,6 +327,7 @@ usage () {
   echo "  -G \$lvm_group    :  Set the LVM group where mongo data is, or where is going to be (optional)"
   echo "                       default: 'mongo_data'"
   echo "  -V \$lvm_name     :  Set the LVM Volume name where mongo data is, or where is going to be (optional)"
+  echo "                       Only used for Full Backup. Ignored otherwise"
   echo "                       default: 'mongodata'"
   echo "  -t \$last_op_time :  Set the path to the file where the last oplog time is stored, or where is going to be (optional)"
   echo "                       default: '/opt/mongo_last_oplog.time'"
