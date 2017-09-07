@@ -90,16 +90,20 @@ checkMongoMaster () {
 
 stopMongo () {
   if $OLD_VERSION && $WIRED_TIGER; then
+    echo "  Stopping mongo..."
     service moongod stop
   else
+    echo "  Locking mongo writes and flushing operations..."
     mongo --eval "printjson(db.fsyncLock())"
   fi
 }
 
 startMongo () {
   if $OLD_VERSION && $WIRED_TIGER; then
+    echo "  Starting mongo..."
     service mongod start
   else
+    echo "  Unlocking mongo writes..."
     mongo --eval "printjson(db.fsyncUnlock())"
   fi
 }
@@ -121,6 +125,8 @@ lastOplogPosition () {
 ######### FULL  #########
 
 createSnapshot () {
+  echo "  Taking LVM snapshot"
+
   if [ -e $LVM_PATH ]; then
     lvcreate --snapshot --size $SNAPSHOT_SIZE \
       --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
