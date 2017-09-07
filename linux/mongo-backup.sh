@@ -19,6 +19,8 @@ readonly MONGO_DATA='/data'
 # LVM to restore the backup
 readonly RESTORE_NAME='mongo-restore'
 readonly RESTORE_PATH="/dev/${LVM_GROUP}/${RESTORE_NAME}"
+# Restore file, provided as argument
+RESTORE_FILE=''
 
 # LVM Snapshot settings
 readonly SNAPSHOT_NAME='mongo-snapshot'
@@ -33,8 +35,6 @@ readonly INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
 # REVIEW oplog file method, where it is placed (should be on backup/?)
 readonly LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
 
-# Restore file, provided as argument
-BACKUP_FILE=''
 
 # Selected option between perform backup or restore.
 BACKUP=false
@@ -189,7 +189,7 @@ archiveIncrementalBackup () {
 restoreFullBackup () {
   
   lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP
-  gzip -d -c ${BACKUP_FILE} | dd of=${RESTORE_PATH}
+  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH}
   mount ${RESTORE_PATH} ${MONGO_DATA}
 }
 
@@ -198,7 +198,7 @@ restoreFullBackup () {
 
 restoreIncrementalBackup () {
   TMP_FOLDER='/tmp/mongorestore/oplog.bson'
-  cp ${BACKUP_FILE} ${TMP_FOLDER}
+  cp ${RESTORE_FILE} ${TMP_FOLDER}
   mongorestore --oplogReplay ${TMP_FOLDER}
 }
 
@@ -260,9 +260,9 @@ setupIncrementalRestore () {
 checkArgs () {
   if $BACKUP && $RESTORE; then
     errormsg 'Select either backup or restore'
-  elif $BACKUP && [ ! -z "$BACKUP_TYPE" ] && [ -z "$BACKUP_FILE" ]; then
+  elif $BACKUP && [ ! -z "$BACKUP_TYPE" ] && [ -z "$RESTORE_FILE" ]; then
     setupBackup
-  elif $RESTORE && [ ! -z "$RESTORE_TYPE" ] && [ ! -z "$BACKUP_FILE" ]; then
+  elif $RESTORE && [ ! -z "$RESTORE_TYPE" ] && [ ! -z "$RESTORE_FILE" ]; then
     setupRestore
   else
     errormsg 'Something went wrong. Check the arguments'
@@ -289,7 +289,7 @@ while [ "$#" -gt 0 ]; do
     -S) SNAPSHOT_SIZE=$2; shift 2;;
 
     -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
-    -f) BACKUP_FILE=$2; shift 2;;
+    -f) RESTORE_FILE=$2; shift 2;;
 
     -G) LVM_GROUP=$2; shift 2;;
     -V) LVM_NAME=$2; shift 2;;
