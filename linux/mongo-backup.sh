@@ -10,8 +10,8 @@ readonly FULL_PATH="/backup/mongo/full"
 readonly INCREMENTAL_PATH='/backup/mongo/incremental'
 
 # LVM where Mongo data is stored
-readonly VOLUME_GROUP='mongo_data'
-readonly LOGICAL_VOLUME='mongodata'
+VOLUME_GROUP='mongo_data'
+LOGICAL_VOLUME='mongodata'
 readonly LVM_PATH="/dev/${VOLUME_GROUP}/${LOGICAL_VOLUME}"
 readonly MONGO_DATA='/data'
 
@@ -20,10 +20,10 @@ readonly RESTORE_NAME='mongo-restore'
 readonly RESTORE_PATH="/dev/${VOLUME_GROUP}/${RESTORE_NAME}"
 
 # LVM Snapshot settings
-SNAPSHOT_SIZE='100G'
 readonly SNAPSHOT_NAME='mongo-snapshot'
 readonly SNAPSHOT_PATH="/dev/${VOLUME_GROUP}/${SNAPSHOT_NAME}"
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
+SNAPSHOT_SIZE='100G'
 
 # Mongo oplog incremental backup
 readonly INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
@@ -34,8 +34,11 @@ readonly LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
 
 # Restore file, provided as argument
 BACKUP_FILE=''
+
+# Selected option between perform backup or restore.
 BACKUP=false
 RESTORE=false
+
 # Mongo info
 MONGO_VERSION=0
 MONGO_STORAGE=""
@@ -180,7 +183,6 @@ archiveIncrementalBackup () {
 
 ####################### RESTORE ############################
 
-
 ### FULL ###
 
 restoreFullBackup () {
@@ -287,6 +289,8 @@ while [ "$#" -gt 0 ]; do
 
     -R) RESTORE=true; RESTORE_TYPE=$2; shift 2;;
     -f) BACKUP_FILE=$2; shift 2;;
+    -G) VOLUME_GROUP=$2; shift 2;;
+    -V) LOGICAL_VOLUME=$2; shift 2;;
     -h) usage; exit 0;;
     *) echo "ERROR: Invalid option"; usage; exit 2;;
   esac
