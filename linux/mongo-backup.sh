@@ -5,6 +5,32 @@
 # usage
 # lock file
 
+# Args handler
+if [ $# -eq 0 ] || [[ $(( $# % 2 )) -eq 1 ]]; then
+  usage
+  echo ""
+  errormsg 'Wrong number of arguments'
+fi
+
+
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
+    -S) SNAPSHOT_SIZE=$2; shift 2;;
+
+    -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
+    -f) RESTORE_FILE=$2; shift 2;;
+
+    -P) BACKUP_PATH=$2; shift 2;;
+
+    -G) LVM_GROUP=$2; shift 2;;
+    -V) LVM_NAME=$2; shift 2;;
+
+    -h) usage; exit 0;;
+    *) usage; echo ""; echo "ERROR: Invalid option"; exit 2;;
+  esac
+done
+
 # Backup location
 BACKUP_PATH='/backup/mongo'
 readonly FULL_PATH="${BACKUP_PATH}/full"
@@ -305,28 +331,5 @@ setup () {
   checkArgs
 }
 
-# Args handler
-if [ $# -eq 0 ] || [[ $(( $# % 2 )) -eq 1 ]]; then
-  errormsg 'Wrong number of arguments'
-fi
-
-
-while [ "$#" -gt 0 ]; do
-  case $1 in
-    -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
-    -S) SNAPSHOT_SIZE=$2; shift 2;;
-
-    -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
-    -f) RESTORE_FILE=$2; shift 2;;
-
-    -P) BACKUP_PATH=$2; shift 2;;
-
-    -G) LVM_GROUP=$2; shift 2;;
-    -V) LVM_NAME=$2; shift 2;;
-
-    -h) usage; exit 0;;
-    *) echo "ERROR: Invalid option"; usage; exit 2;;
-  esac
-done
 
 setup
