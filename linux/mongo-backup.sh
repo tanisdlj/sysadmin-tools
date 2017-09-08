@@ -83,8 +83,9 @@ checkMongoEngine () {
 checkMongoMaster () {
   local mastertmp=`mongo --eval 'printjson(db.runCommand("ismaster"))' | grep ismaster | cut -d' ' -f 3`
   ISMASTER="${mastertmp//,}"
-  if $ISMASTER; then
-    echo "ERROR: Backups should be taken from a secondary member"
+  if [ ! $ISMASTER ]; then
+#    echo "ERROR: Backups should be taken from a secondary member"
+    echo "ERROR: Not Master"
     exit 1
   fi
 }
