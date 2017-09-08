@@ -1,9 +1,12 @@
 #!/bin/bash
-# Call backup method, call check mongo. If primary, error
+# Call backup method, call check mongo. If primary, error <-- NOTE1
 # Call restore method, call check mongo. If primary, no error
-# Args management
-# usage
 # lock file
+# NOTE1: As we don't stop the db, should we run this in primary? To get the latest oplog.
+# NOTE2: Oplog = 10G is way too big.
+
+# NOTE3: Forked mongo lead to wrong service management
+# NOTE4: Argument for mongo service?
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -119,7 +122,8 @@ lastOplogPosition () {
   else
     echo "    Stored in ${LAST_OPLOG_FILE}"
     echo "${LASTOP_TIME}" > ${LAST_OPLOG_FILE}
-    sed 's/,/000,/' ${LAST_OPLOG_FILE}
+# Oplog seems to use an odd time
+#    sed -i 's/,/000,/' ${LAST_OPLOG_FILE}
   fi
 }
 
@@ -185,6 +189,8 @@ archiveIncrementalBackup () {
   fi
 
   echo "Performing incremental backup"
+# Secondary
+#  mongo --eval "rs.slaveOk()" --shell
   mongodump ${MDBDUMP_OPTIONS} --query '{ "ts" : { $gt :  '"${LAST_BACKUP_TIME}"' } }' \
     || { errormsg "Error getting oplog with mongodump ${MDBDUMP_OPTIONS} from ${LAST_BACKUP_TIME}"; }
   rm ${INCREMENTAL_JSON}
@@ -253,10 +259,10 @@ setupFullBackup () {
 
 setupIncrementalBackup () {
   echo "  Incremental Backup selected"
-  stopMongo
+#  stopMongo
   archiveIncrementalBackup
   lastOplogPosition
-  startMongo
+#  startMongo
 }
 
 ### RESTORE ###
