@@ -119,6 +119,7 @@ lastOplogPosition () {
   else
     echo "    Stored in ${LAST_OPLOG_FILE}"
     echo "${LASTOP_TIME}" > ${LAST_OPLOG_FILE}
+    sed 's/,/000,/' ${LAST_OPLOG_FILE}
   fi
 }
 
