@@ -189,18 +189,18 @@ archiveIncrementalBackup () {
     errormsg "${LAST_OPLOG_FILE} not found or permissions problem"
   fi
 
-  echo "Performing incremental backup"
+  echo "  Performing incremental backup"
 # Secondary
 #  mongo --eval "rs.slaveOk()" --shell
   mongodump ${MDBDUMP_OPTIONS} --query '{ "ts" : { $gt :  '"${LAST_BACKUP_TIME}"' } }' \
     || { errormsg "Error getting oplog with mongodump ${MDBDUMP_OPTIONS} from ${LAST_BACKUP_TIME}"; }
-  rm ${INCREMENTAL_JSON}
 
   if [ -d "${INCREMENTAL_PATH}" ]; then
     echo "  WARNING: ${INCREMENTAL_PATH} not found. Trying to create"
     mkdir -p ${INCREMENTAL_PATH} || { errormsg "${INCREMENTAL_PATH} dir creation failed. Permissions problem?"; }
   fi
 
+  rm ${INCREMENTAL_JSON}
   mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} || { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE} "; }
 }
 
@@ -291,7 +291,7 @@ setupIncrementalRestore () {
 checkArgs () {
   
   FULL_PATH="${BACKUP_PATH}/full"
-  INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
+  INCREMENTAL_PATH="${BACKUP_PATH}/incremental/local"
   INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
   INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
 
