@@ -195,9 +195,8 @@ archiveIncrementalBackup () {
   mongodump ${MDBDUMP_OPTIONS} --query '{ "ts" : { $gt :  '"${LAST_BACKUP_TIME}"' } }' \
     || { errormsg "Error getting oplog with mongodump ${MDBDUMP_OPTIONS} from ${LAST_BACKUP_TIME}"; }
 
-  if [ -d "${INCREMENTAL_PATH}" ]; then
-    echo "  WARNING: ${INCREMENTAL_PATH} not found. Trying to create"
-    mkdir -p ${INCREMENTAL_PATH} || { errormsg "${INCREMENTAL_PATH} dir creation failed. Permissions problem?"; }
+  if [ ! -d "${INCREMENTAL_PATH}/local" ]; then
+    errormsg "${INCREMENTAL_PATH}/local not found. Permissions problem or wrong path?"
   fi
 
   rm ${INCREMENTAL_JSON}
@@ -291,9 +290,9 @@ setupIncrementalRestore () {
 checkArgs () {
   
   FULL_PATH="${BACKUP_PATH}/full"
-  INCREMENTAL_PATH="${BACKUP_PATH}/incremental/local"
-  INCREMENTAL_JSON="${INCREMENTAL_PATH}/oplog.rs.metadata.json"
-  INCREMENTAL_BSON="${INCREMENTAL_PATH}/oplog.rs.bson"
+  INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
+  INCREMENTAL_JSON="${INCREMENTAL_PATH}/local/oplog.rs.metadata.json"
+  INCREMENTAL_BSON="${INCREMENTAL_PATH}/local/oplog.rs.bson"
 
   SNAPSHOT_PATH="/dev/${LVM_GROUP}/${SNAPSHOT_NAME}"
 
