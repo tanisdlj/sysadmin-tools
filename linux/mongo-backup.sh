@@ -1,12 +1,8 @@
 #!/bin/bash
-# Call backup method, call check mongo. If primary, error <-- NOTE1
-# Call restore method, call check mongo. If primary, no error
-# lock file
-# NOTE1: As we don't stop the db, should we run this in primary? To get the latest oplog.
-# NOTE2: Oplog = 10G is way too big.
+# Backup and restore a mongo database using LVM Snapshots.
+# Writen by Diego Lucas Jimenez, 2017, for Projectplace.
 
-# NOTE3: Forked mongo lead to wrong service management
-# NOTE4: Argument for mongo service?
+readonly VERSION='0.8'
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -162,7 +158,7 @@ archiveFullBackup () {
   umount ${SNAPSHOT_PATH} > /dev/null 2>&1
 
   if [ -d "${FULL_PATH}" ]; then
-    dd if=${SNAPSHOT_PATH} | gzip > ${FULL_FILE}
+    dd if=${SNAPSHOT_PATH} | gzip > ${FULL_FILE} || { removeSnapshot; errormsg "Failed archiving snapshot ${SNAPSHOT_PATH} in ${FULL_FILE}"; }
   else
     removeSnapshot
     errormsg "Path ${FULL_PATH} not accessible"
@@ -201,6 +197,7 @@ archiveIncrementalBackup () {
 
   rm ${INCREMENTAL_JSON}
   mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} || { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE} "; }
+  echo "Stored incremental backup as ${INCREMENTAL_FILE}"
 }
 
 
@@ -209,27 +206,37 @@ archiveIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
-  
   lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
 
-  if [ -e ${RESTORE_FILE} ]; then
-    gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH}
-
-    if [ ! -d ${MONGO_DATA} ]; then
-      echo " WARNING: ${MONGO_DATA} not found, trying to create the dir..."
-      mkdir -p ${MONGO_DATA}
-    fi
-    mount ${RESTORE_PATH} ${MONGO_DATA}
+  if [ ! -e ${RESTORE_FILE} ]; then
+    errormsg "${RESTORE_FILE} not found or permission problem"
   fi
+
+  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH}  || { errormsg "Error restoring ${RESTORE_FILE} to ${RESTORE_PATH}"; }
+
+  if [ ! -d ${MONGO_DATA} ]; then
+    echo " WARNING: ${MONGO_DATA} not found, trying to create the dir..."
+    mkdir -p ${MONGO_DATA} || { errormsg "Error creating dir ${MONGO_DATA}"; }
+  fi
+
+  mount ${RESTORE_PATH} ${MONGO_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGO_DATA}"; }
 }
 
 
 ### INCREMENTAL ###
-
 restoreIncrementalBackup () {
-  TMP_FOLDER='/tmp/mongorestore/oplog.bson'
-  cp ${RESTORE_FILE} ${TMP_FOLDER}
-  mongorestore --oplogReplay ${TMP_FOLDER}
+  local TMP_FOLDER='/tmp/mongorestore'
+  if [ ! -d ${TMP_FOLDER} ]; then
+    mkdir ${TMP_FOLDER}
+  fi
+
+  if [ ! -e ${RESTORE_FILE} ]; then
+    errormsg "${RESTORE_FILE} not found or permission problem"
+  fi
+
+  cp ${RESTORE_FILE} ${TMP_FOLDER}/oplog.bson
+  mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE}"; }
+  rm -rf ${TMP_FOLDER}
 }
 
 ############# SETUP #################
@@ -276,19 +283,20 @@ setupRestore () {
 }
 
 setupFullRestore () {
-  stopMongo
-  startMongo
+  #stopMongo
+  restoreFullBackup
+  #startMongo
 }
 
 setupIncrementalRestore () {
-  stopMongo
-  startMongo
+  #stopMongo
+  restoreIncrementalBackup
+  #startMongo
 }
 
 #######################################
 
-checkArgs () {
-  
+setup () {
   FULL_PATH="${BACKUP_PATH}/full"
   INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
   INCREMENTAL_JSON="${INCREMENTAL_PATH}/local/oplog.rs.metadata.json"
@@ -309,10 +317,6 @@ checkArgs () {
   else
     errormsg 'Something went wrong. Check the arguments'
   fi
-}
-
-setup () {
-  checkArgs
 }
 
 usage () {
@@ -371,6 +375,5 @@ while [ "$#" -gt 0 ]; do
     *) usage; echo ""; echo "ERROR: Invalid option"; exit 2;;
   esac
 done
-
 
 setup
