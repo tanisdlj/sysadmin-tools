@@ -2,7 +2,7 @@
 # Backup and restore a mongo database using LVM Snapshots.
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
 
-readonly VERSION='0.8'
+readonly SCRIPT_VERSION='0.8'
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -130,7 +130,7 @@ createSnapshot () {
   echo "  Taking LVM snapshot"
 
   if [ -e $LVM_PATH ]; then
-    lvcreate --snapshot --size $SNAPSHOT_SIZE \
+    /sbin/lvcreate --snapshot --size $SNAPSHOT_SIZE \
       --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
     echo "  Snapshot created"
   else
@@ -144,7 +144,7 @@ mountSnapshot () {
     mkdir ${SNAPSHOT_MNT}
   fi
 
-  mount ${SNAPSHOT_PATH} ${SNAPSHOT_MNT}
+  /bin/mount ${SNAPSHOT_PATH} ${SNAPSHOT_MNT}
 }
 
 archiveFullBackup () {
@@ -155,7 +155,7 @@ archiveFullBackup () {
 
 #  echo "${LASTOP_TIME}" >> ${SNAPSHOT_MNT}/mongo_last_oplog.time
 #  tar -pczf ${FULL_FILE} ${SNAPSHOT_MNT}
-  umount ${SNAPSHOT_PATH} > /dev/null 2>&1
+  /bin/umount ${SNAPSHOT_PATH} > /dev/null 2>&1
 
   if [ -d "${FULL_PATH}" ]; then
     dd if=${SNAPSHOT_PATH} | gzip > ${FULL_FILE} || { removeSnapshot; errormsg "Failed archiving snapshot ${SNAPSHOT_PATH} in ${FULL_FILE}"; }
@@ -167,8 +167,8 @@ archiveFullBackup () {
 
 removeSnapshot () {
   echo "  Removing ${SNAPSHOT_PATH}"
-  umount ${SNAPSHOT_PATH} > /dev/null 2>&1
-  lvremove -f ${SNAPSHOT_PATH} || { errormsg "Failed removing snapshot ${SNAPSHOT_PATH}"; }
+  /bin/umount ${SNAPSHOT_PATH} > /dev/null 2>&1
+  /sbin/lvremove -f ${SNAPSHOT_PATH} || { errormsg "Failed removing snapshot ${SNAPSHOT_PATH}"; }
 }
 
 
@@ -206,7 +206,7 @@ archiveIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
-  lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
+  /sbin/lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
 
   if [ ! -e ${RESTORE_FILE} ]; then
     errormsg "${RESTORE_FILE} not found or permission problem"
@@ -219,7 +219,7 @@ restoreFullBackup () {
     mkdir -p ${MONGO_DATA} || { errormsg "Error creating dir ${MONGO_DATA}"; }
   fi
 
-  mount ${RESTORE_PATH} ${MONGO_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGO_DATA}"; }
+  /bin/mount ${RESTORE_PATH} ${MONGO_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGO_DATA}"; }
 }
 
 
@@ -235,7 +235,7 @@ restoreIncrementalBackup () {
   fi
 
   cp ${RESTORE_FILE} ${TMP_FOLDER}/oplog.bson
-  mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE}"; }
+  /usr/bin/mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE}"; }
   rm -rf ${TMP_FOLDER}
 }
 
