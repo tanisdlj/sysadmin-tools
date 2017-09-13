@@ -10,6 +10,8 @@ LVM_NAME='mongodata'
 LVM_PATH=''
 
 # Backup location
+BACKUP_USER=''
+BACKUP_SERVER=''
 BACKUP_PATH='/backup/mongo'
 FULL_PATH=''
 INCREMENTAL_PATH=''
@@ -50,7 +52,7 @@ OLD_VERSION=
 WIRED_TIGER=
 ISMASTER=
 
-NOW=$(date +"%F_%R")
+NOW=$(date +"%F_%H%M")
 #LASTOP_TIME=""
 
 ###################### GENERIC FUNCTIONS ########################
@@ -148,20 +150,21 @@ mountSnapshot () {
 }
 
 archiveFullBackup () {
-  NOW=$(date +"%F_%R")
+  NOW=$(date +"%F_%H%M")
   local FULL_FILE="${FULL_PATH}/mongoFull.${NOW}.gz"
 
-  echo "  Archiving $FULL_FILE"
+  echo "  Archiving ${BACKUP_USER}@${BACKUP_SERVER}:${FULL_FILE}"
 
 #  echo "${LASTOP_TIME}" >> ${SNAPSHOT_MNT}/mongo_last_oplog.time
 #  tar -pczf ${FULL_FILE} ${SNAPSHOT_MNT}
   /bin/umount ${SNAPSHOT_PATH} > /dev/null 2>&1
 
-  if [ -d "${FULL_PATH}" ]; then
-    dd if=${SNAPSHOT_PATH} | gzip > ${FULL_FILE} || { removeSnapshot; errormsg "Failed archiving snapshot ${SNAPSHOT_PATH} in ${FULL_FILE}"; }
+  if ssh ucsbackup@satvmlst01.sa.projectplace.com "ls ${FULL_PATH}" ; then
+    dd if=${SNAPSHOT_PATH} | gzip -1 - | ssh ${BACKUP_USER}@${BACKUP_SERVER} dd of=${FULL_FILE} \
+     || { removeSnapshot; errormsg "Failed archiving snapshot ${SNAPSHOT_PATH} in ${FULL_FILE}"; }
   else
     removeSnapshot
-    errormsg "Path ${FULL_PATH} not accessible"
+    errormsg "Path ${BACKUP_USER}@${BACKUP_SERVER}:${FULL_PATH} not accessible"
   fi
 }
 
@@ -175,7 +178,7 @@ removeSnapshot () {
 ####### INCREMENTAL #######
 
 archiveIncrementalBackup () {
-  NOW=$(date +"%F_%R")
+  NOW=$(date +"%F_%H%M")
   local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
   local MDBDUMP_OPTIONS="-d local -c oplog.rs -o ${INCREMENTAL_PATH}"
 
@@ -310,7 +313,7 @@ setup () {
 
   if $BACKUP && $RESTORE; then
     errormsg 'Select either backup or restore'
-  elif $BACKUP && [ ! -z "$BACKUP_MODE" ] && [ -z "$RESTORE_FILE" ]; then
+  elif $BACKUP && [ ! -z "$BACKUP_MODE" ] && [ ! -z "${BACKUP_USER}" ] && [ ! -z "${BACKUP_SERVER}" ]&& [ -z "$RESTORE_FILE" ]; then
     setupBackup
   elif $RESTORE && [ ! -z "$RESTORE_MODE" ] && [ ! -z "$RESTORE_FILE" ]; then
     setupRestore
@@ -330,6 +333,10 @@ usage () {
   echo "                       default: '100G'"
   echo " -P \$backup_path   : Set the directory where the backups will be stored (optional)"
   echo "                       default: '/backup/mongo'"
+  echo " -u \$backup_user   :  Set the user to ssh where mongo backup is going to be stored"
+  echo "                        Only used and needed for Full Backup. Ignored otherwise"
+  echo " -H \$backup_host   :  Set the host to ssh where mongo backup is going to be stored"
+  echo "                        Only used and needed for Full Backup. Ignored otherwise"
   echo ""
   echo " -R \$restore_mode  : Restore a type of backup, either 'full' or 'incremental'"
   echo " -f \$restore_file  : Set the file from which the restore will be done"
@@ -342,7 +349,6 @@ usage () {
   echo "                       default: 'mongodata'"
   echo "  -t \$last_op_time :  Set the path to the file where the last oplog time is stored, or where is going to be (optional)"
   echo "                       default: '/opt/mongo_last_oplog.time'"
-
 }
 
 errormsg () {
@@ -361,6 +367,8 @@ while [ "$#" -gt 0 ]; do
   case $1 in
     -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
     -S) SNAPSHOT_SIZE=$2; shift 2;;
+    -u) BACKUP_USER=$2; shift 2;;
+    -H) BACKUP_SERVER=$2; shift 2;;
 
     -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
     -f) RESTORE_FILE=$2; shift 2;;
