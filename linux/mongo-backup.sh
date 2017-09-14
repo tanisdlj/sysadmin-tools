@@ -179,6 +179,7 @@ removeSnapshot () {
 
 archiveIncrementalBackup () {
   NOW=$(date +"%F_%H%M")
+
   local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
   local MDBDUMP_OPTIONS="-d local -c oplog.rs -o ${INCREMENTAL_PATH}"
 
@@ -199,8 +200,27 @@ archiveIncrementalBackup () {
   fi
 
   rm ${INCREMENTAL_JSON}
-  mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} || { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE} "; }
+  mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} || { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE}"; }
   echo "Stored incremental backup as ${INCREMENTAL_FILE}"
+}
+
+storeIncrementalBackup () {
+  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
+  local remote_path="${BACKUP_USER}@${BACKUP_SERVER}:${INCREMENTAL_FILE}"
+
+  echo "Transferring ${INCREMENTAL_FILE} to ${BACKUP_USER}@${BACKUP_SERVER}"
+  if [ ! -e "${INCREMENTAL_FILE}" ]; then
+    errormsg "${INCREMENTAL_FILE} not found!"
+  }
+
+  scp ${INCREMENTAL_FILE} ${remote_path} || { removeIncrementalBackup; errormsg "Error transferring ${INCREMENTAL_FILE} to ${remote_path}"; }
+}
+
+removeIncrementalBackup () {
+  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
+
+  echo "Removing ${INCREMENTAL_FILE} from local server"
+  rm -f ${INCREMENTAL_FILE} || { errormsg "Error removing ${INCREMENTAL_FILE} from local" ; }
 }
 
 
@@ -272,6 +292,8 @@ setupIncrementalBackup () {
 #  stopMongo
   archiveIncrementalBackup
   lastOplogPosition
+  storeIncrementalBackup
+  removeIncrementalBackup
 #  startMongo
 }
 
@@ -302,6 +324,7 @@ setupIncrementalRestore () {
 setup () {
   FULL_PATH="${BACKUP_PATH}/full"
   INCREMENTAL_PATH="${BACKUP_PATH}/incremental"
+
   INCREMENTAL_JSON="${INCREMENTAL_PATH}/local/oplog.rs.metadata.json"
   INCREMENTAL_BSON="${INCREMENTAL_PATH}/local/oplog.rs.bson"
 
@@ -329,14 +352,15 @@ usage () {
   echo "  $(basename $0) -R \$restore_mode -f \$restore_file [options] "
   echo ""
   echo " -B \$backup_mode   : Perform backup in a backup_mode, either 'full' or 'incremental'"
+  echo " -u \$backup_user   :  Set the user to ssh where mongo backup is going to be stored"
+  echo "                        Only used and needed for backups. Ignored otherwise"
+  echo " -H \$backup_host   :  Set the host to ssh where mongo backup is going to be stored"
+  echo "                        Only used and needed for backups. Ignored otherwise"
   echo " -S \$snapshot_size : Specify the max size of the snapshot (optional). Only used for Full mode. Ignored otherwise"
   echo "                       default: '100G'"
   echo " -P \$backup_path   : Set the directory where the backups will be stored (optional)"
   echo "                       default: '/backup/mongo'"
-  echo " -u \$backup_user   :  Set the user to ssh where mongo backup is going to be stored"
-  echo "                        Only used and needed for Full Backup. Ignored otherwise"
-  echo " -H \$backup_host   :  Set the host to ssh where mongo backup is going to be stored"
-  echo "                        Only used and needed for Full Backup. Ignored otherwise"
+
   echo ""
   echo " -R \$restore_mode  : Restore a type of backup, either 'full' or 'incremental'"
   echo " -f \$restore_file  : Set the file from which the restore will be done"
