@@ -201,11 +201,13 @@ archiveIncrementalBackup () {
 
   rm ${INCREMENTAL_JSON}
   mv ${INCREMENTAL_BSON} ${INCREMENTAL_FILE} || { errormsg "Error renaming ${INCREMENTAL_BSON} to ${INCREMENTAL_FILE}"; }
-  echo "Stored incremental backup as ${INCREMENTAL_FILE}"
+
+  gzip ${INCREMENTAL_FILE} || { errormsg "Error compressing ${INCREMENTAL_FILE}"; }
+  echo "Stored incremental backup as ${INCREMENTAL_FILE}.gz"
 }
 
 storeIncrementalBackup () {
-  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
+  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson.gz"
   local remote_path="${BACKUP_USER}@${BACKUP_SERVER}:${INCREMENTAL_FILE}"
 
   echo "Transferring ${INCREMENTAL_FILE} to ${BACKUP_USER}@${BACKUP_SERVER}"
@@ -217,7 +219,7 @@ storeIncrementalBackup () {
 }
 
 removeIncrementalBackup () {
-  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson"
+  local INCREMENTAL_FILE="${INCREMENTAL_PATH}/oplog.${NOW}.bson.gz"
 
   echo "Removing ${INCREMENTAL_FILE} from local server"
   rm -f ${INCREMENTAL_FILE} || { errormsg "Error removing ${INCREMENTAL_FILE} from local" ; }
