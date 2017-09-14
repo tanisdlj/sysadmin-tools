@@ -211,7 +211,7 @@ storeIncrementalBackup () {
   echo "Transferring ${INCREMENTAL_FILE} to ${BACKUP_USER}@${BACKUP_SERVER}"
   if [ ! -e "${INCREMENTAL_FILE}" ]; then
     errormsg "${INCREMENTAL_FILE} not found!"
-  }
+  fi
 
   scp ${INCREMENTAL_FILE} ${remote_path} || { removeIncrementalBackup; errormsg "Error transferring ${INCREMENTAL_FILE} to ${remote_path}"; }
 }
