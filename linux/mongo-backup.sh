@@ -24,7 +24,7 @@ INCREMENTAL_BSON=''
 readonly SNAPSHOT_NAME='mongo-snapshot'
 SNAPSHOT_PATH=''
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
-SNAPSHOT_SIZE='100G'
+VOLUME_SIZE='100G'
 
 
 # LVM to restore the backup
@@ -132,7 +132,7 @@ createSnapshot () {
   echo "  Taking LVM snapshot"
 
   if [ -e $LVM_PATH ]; then
-    /sbin/lvcreate --snapshot --size $SNAPSHOT_SIZE \
+    /sbin/lvcreate --snapshot --size $VOLUME_SIZE \
       --name $SNAPSHOT_NAME $LVM_PATH || { errormsg 'Snapshot creation failed'; }
     echo "  Snapshot created"
   else
@@ -231,7 +231,7 @@ removeIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
-  /sbin/lvcreate --size $SNAPSHOT_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
+  /sbin/lvcreate --size $VOLUME_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
 
   if [ ! -e ${RESTORE_FILE} ]; then
     errormsg "${RESTORE_FILE} not found or permission problem"
@@ -350,7 +350,7 @@ setup () {
 usage () {
   echo "Backup or restore a mongo database, both incremental and full backups."
   echo " Usage:"
-  echo "  $(basename $0) -B \$backup_mode [-S \$snapshot_size] [-P \$backup_path] [options] " 
+  echo "  $(basename $0) -B \$backup_mode [-S \$volume_size] [-P \$backup_path] [options] " 
   echo "  $(basename $0) -R \$restore_mode -f \$restore_file [options] "
   echo ""
   echo " -B \$backup_mode   : Perform backup in a backup_mode, either 'full' or 'incremental'"
@@ -368,6 +368,9 @@ usage () {
   echo " -f \$restore_file  : Set the file from which the restore will be done"
   echo ""
   echo " Options:"
+  echo "  -S \$volume_size  :  Specify the max size of the Virtual Volume (optional). Used for Full mode. Ignored otherwise"
+  echo "                       In Backup, used as Snapshot max. size"
+  echo "                       default: '100G'"
   echo "  -G \$lvm_group    :  Set the LVM group where mongo data is, or where is going to be (optional)"
   echo "                       default: 'mongo_data'"
   echo "  -V \$lvm_name     :  Set the LVM Volume name where mongo data is, or where is going to be (optional)"
@@ -392,7 +395,7 @@ fi
 while [ "$#" -gt 0 ]; do
   case $1 in
     -B) BACKUP=true; BACKUP_MODE=$2; shift 2;;
-    -S) SNAPSHOT_SIZE=$2; shift 2;;
+    -S) VOLUME_SIZE=$2; shift 2;;
     -u) BACKUP_USER=$2; shift 2;;
     -H) BACKUP_SERVER=$2; shift 2;;
 
