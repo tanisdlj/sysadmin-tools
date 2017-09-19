@@ -32,7 +32,7 @@ readonly RESTORE_NAME='mongo-restore'
 RESTORE_PATH=''
 # Restore file, provided as argument
 RESTORE_FILE=''
-readonly MONGO_DATA='/data'
+MONGODB_DATA='/data'
 
 
 # REVIEW oplog file method, where it is placed (should be on backup/?)
@@ -237,14 +237,17 @@ restoreFullBackup () {
     errormsg "${RESTORE_FILE} not found or permission problem"
   fi
 
-  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH}  || { errormsg "Error restoring ${RESTORE_FILE} to ${RESTORE_PATH}"; }
+  echo "  Restoring full backup from ${RESTORE_FILE} to ${RESTORE_PATH}"
 
-  if [ ! -d ${MONGO_DATA} ]; then
-    echo " WARNING: ${MONGO_DATA} not found, trying to create the dir..."
-    mkdir -p ${MONGO_DATA} || { errormsg "Error creating dir ${MONGO_DATA}"; }
+  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH} status=progress || { errormsg "Error restoring ${RESTORE_FILE} to ${RESTORE_PATH}"; }
+
+  echo "  Success!"
+  if [ ! -d ${MONGODB_DATA} ]; then
+    echo " WARNING: ${MONGODB_DATA} not found, trying to create the dir..."
+    mkdir -p ${MONGODB_DATA} || { errormsg "Error creating dir ${MONGODB_DATA}"; }
   fi
 
-  /bin/mount ${RESTORE_PATH} ${MONGO_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGO_DATA}"; }
+  /bin/mount ${RESTORE_PATH} ${MONGODB_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGODB_DATA}"; }
 }
 
 
@@ -358,14 +361,15 @@ usage () {
   echo "                        Only used and needed for backups. Ignored otherwise"
   echo " -H \$backup_host   :  Set the host to ssh where mongo backup is going to be stored"
   echo "                        Only used and needed for backups. Ignored otherwise"
-  echo " -S \$snapshot_size : Specify the max size of the snapshot (optional). Only used for Full mode. Ignored otherwise"
-  echo "                       default: '100G'"
-  echo " -P \$backup_path   : Set the directory where the backups will be stored (optional)"
+
+  echo " -P \$backup_path   : Optional: Set the directory where the backups will be stored"
   echo "                       default: '/backup/mongo'"
 
   echo ""
   echo " -R \$restore_mode  : Restore a type of backup, either 'full' or 'incremental'"
   echo " -f \$restore_file  : Set the file from which the restore will be done"
+  echo " -D \$database_path : Optional: Path to mongo database files. Only for full restore."
+  echo "                       default: '/data'"
   echo ""
   echo " Options:"
   echo "  -S \$volume_size  :  Specify the max size of the Virtual Volume (optional). Used for Full mode. Ignored otherwise"
@@ -401,6 +405,7 @@ while [ "$#" -gt 0 ]; do
 
     -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
     -f) RESTORE_FILE=$2; shift 2;;
+    -D) MONGODB_DATA=$2; shift 2;;
 
     -P) BACKUP_PATH=$2; shift 2;;
 
