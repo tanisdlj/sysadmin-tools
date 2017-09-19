@@ -382,6 +382,8 @@ usage () {
   echo "                       default: 'mongodata'"
   echo "  -t \$last_op_time :  Set the path to the file where the last oplog time is stored, or where is going to be (optional)"
   echo "                       default: '/opt/mongo_last_oplog.time'"
+  echo ""
+  echo " -h : Usage. Prints this text"
 }
 
 errormsg () {
