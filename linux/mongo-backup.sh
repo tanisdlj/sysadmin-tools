@@ -2,7 +2,7 @@
 # Backup and restore a mongo database using LVM Snapshots.
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
 
-readonly SCRIPT_VERSION='0.8'
+readonly SCRIPT_VERSION='0.9'
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -25,6 +25,7 @@ readonly SNAPSHOT_NAME='mongo-snapshot'
 SNAPSHOT_PATH=''
 readonly SNAPSHOT_MNT='/mnt/mongo-backup'
 VOLUME_SIZE='100G'
+FS_TYPE='ext4'
 
 
 # LVM to restore the backup
@@ -231,7 +232,12 @@ removeIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
+  echo "  Creating ${RESTORE_NAME} volume, size ${VOLUME_SIZE}, in ${LVM_GROUP}"
   /sbin/lvcreate --size $VOLUME_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
+  echo "  Creating file system ${FS_TYPE} in ${RESTORE_PATH}"
+  /sbin/mkfs -t ${FS_TYPE} ${RESTORE_PATH} || { errormsg "Failed creating ${FS_TYPE} in ${RESTORE_PATH}"; }
+  echo "  Tunninng reserved space in ${RESTORE_PATH}"
+  /sbin/tune2fs -m 0 ${RESTORE_PATH} || { echo "  WARNING: Failed tunning ${RESTORE_PATH}"; }
 
   if [ ! -e ${RESTORE_FILE} ]; then
     errormsg "${RESTORE_FILE} not found or permission problem"
