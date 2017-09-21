@@ -1,8 +1,10 @@
 #!/bin/bash
 # Backup and restore a mongo database using LVM Snapshots.
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
+# ToDo: Restore; check master; check disk (of)
 
-readonly SCRIPT_VERSION='0.9'
+
+readonly SCRIPT_VERSION='0.9.1'
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -232,6 +234,7 @@ removeIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
+
   echo "  Creating ${RESTORE_NAME} volume, size ${VOLUME_SIZE}, in ${LVM_GROUP}"
   /sbin/lvcreate --size $VOLUME_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
   echo "  Creating file system ${FS_TYPE} in ${RESTORE_PATH}"
@@ -245,15 +248,21 @@ restoreFullBackup () {
 
   echo "  Restoring full backup from ${RESTORE_FILE} to ${RESTORE_PATH}"
 
-  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH} status=progress || { errormsg "Error restoring ${RESTORE_FILE} to ${RESTORE_PATH}"; }
+  gzip -d -c ${RESTORE_FILE} | dd of=${RESTORE_PATH} status=progress || { echo "  WARNING: Restore didn't finished with 0 exit code (sometimes could be safely ignored)"; }
 
-  echo "  Success!"
+  local dmesg_error=`/bin/dmesg -T | tail -5 | grep 'exceeds size of device'`
+  if [ ! -z "${dmesg_error}" ]; then 
+    errormsg "Restoring ${RESTORE_FILE} to ${RESTORE_PATH}; Volume too small? ${dmesg_error}"
+  fi
+
+  echo "Mounting data..."
   if [ ! -d ${MONGODB_DATA} ]; then
     echo " WARNING: ${MONGODB_DATA} not found, trying to create the dir..."
     mkdir -p ${MONGODB_DATA} || { errormsg "Error creating dir ${MONGODB_DATA}"; }
   fi
 
   /bin/mount ${RESTORE_PATH} ${MONGODB_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGODB_DATA}"; }
+  echo "  Success!"
 }
 
 
@@ -263,13 +272,14 @@ restoreIncrementalBackup () {
   if [ ! -d ${TMP_FOLDER} ]; then
     mkdir ${TMP_FOLDER}
   fi
+  echo "  Restoring ${RESTORE_FILE}"
 
   if [ ! -e ${RESTORE_FILE} ]; then
     errormsg "${RESTORE_FILE} not found or permission problem"
   fi
 
-  cp ${RESTORE_FILE} ${TMP_FOLDER}/oplog.bson
-  /usr/bin/mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE}"; }
+  cp ${RESTORE_FILE} ${TMP_FOLDER}/oplog.bson || { errormsg "Failed creating temporary ${TMP_FOLDER}/oplog.bson"; }
+  /usr/bin/mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE} from ${TMP_FOLDER}/oplog.bson"; }
   rm -rf ${TMP_FOLDER}
 }
 
