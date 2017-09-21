@@ -293,7 +293,7 @@ restoreIncrementalBackup () {
 
     local decompressed_file=`find $TMP_FOLDER -type f -printf "%f\n"`
     echo "  Renaming ${decompressed_file} to ${TMP_FILE}"
-    mv $decompressed_file $TMP_FILE || { errormsg "Failed renaming ${decompressed_file} to ${TMP_FILE}"; }
+    mv ${TMP_FOLDER}/${decompressed_file} ${TMP_FILE} || { errormsg "Failed renaming ${decompressed_file} to ${TMP_FILE}"; }
   fi
 
   echo "  Replaying ${TMP_FOLDER}/oplog.bson"
