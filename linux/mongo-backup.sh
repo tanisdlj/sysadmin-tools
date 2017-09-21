@@ -1,8 +1,7 @@
 #!/bin/bash
 # Backup and restore a mongo database using LVM Snapshots.
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
-# ToDo: Restore; check master; check disk (of)
-
+# ToDo: Restore => check master; check disk (of)
 
 readonly SCRIPT_VERSION='0.9.1'
 
@@ -234,6 +233,8 @@ removeIncrementalBackup () {
 ### FULL ###
 
 restoreFullBackup () {
+  local mongo_user='mongodb'
+  local mongo_group='mongodb'
 
   echo "  Creating ${RESTORE_NAME} volume, size ${VOLUME_SIZE}, in ${LVM_GROUP}"
   /sbin/lvcreate --size $VOLUME_SIZE --name $RESTORE_NAME $LVM_GROUP || { errormsg "${RESTORE_PATH} creation failed"; }
@@ -259,6 +260,7 @@ restoreFullBackup () {
   if [ ! -d ${MONGODB_DATA} ]; then
     echo " WARNING: ${MONGODB_DATA} not found, trying to create the dir..."
     mkdir -p ${MONGODB_DATA} || { errormsg "Error creating dir ${MONGODB_DATA}"; }
+    chown -R ${mongo_user}:${mongo_group} ${MONGODB_DATA}
   fi
 
   /bin/mount ${RESTORE_PATH} ${MONGODB_DATA} || { errormsg "Error mounting ${RESTORE_PATH} in ${MONGODB_DATA}"; }
@@ -269,16 +271,24 @@ restoreFullBackup () {
 ### INCREMENTAL ###
 restoreIncrementalBackup () {
   local TMP_FOLDER='/tmp/mongorestore'
-  if [ ! -d ${TMP_FOLDER} ]; then
-    mkdir ${TMP_FOLDER}
-  fi
-  echo "  Restoring ${RESTORE_FILE}"
+  local TMP_FILE='${TMP_FOLDER}/oplog.bson.gz'
 
   if [ ! -e ${RESTORE_FILE} ]; then
     errormsg "${RESTORE_FILE} not found or permission problem"
   fi
 
-  cp ${RESTORE_FILE} ${TMP_FOLDER}/oplog.bson || { errormsg "Failed creating temporary ${TMP_FOLDER}/oplog.bson"; }
+  if [ ! -d ${TMP_FOLDER} ]; then
+    mkdir ${TMP_FOLDER}
+  fi
+
+  cp ${RESTORE_FILE} ${TMP_FILE} || { errormsg "Failed creating temporary ${TMP_FILE}"; }
+  
+  local file_type=`file ${TMP_FILE} | grep compressed`
+  if [ ! -z ${file_type} ]; then
+    gzip -d ${TMP_FILE} || { errormsg "Failed decompressing ${TMP_FILE}"; }
+  fi
+
+  echo "  Restoring ${RESTORE_FILE}"
   /usr/bin/mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE} from ${TMP_FOLDER}/oplog.bson"; }
   rm -rf ${TMP_FOLDER}
 }
