@@ -271,7 +271,8 @@ restoreFullBackup () {
 ### INCREMENTAL ###
 restoreIncrementalBackup () {
   local TMP_FOLDER='/tmp/mongorestore'
-  local TMP_FILE="${TMP_FOLDER}/oplog.bson.gz"
+  local TMP_FILE="${TMP_FOLDER}/oplog.bson"
+  local 
 
   echo "  Restoring ${RESTORE_FILE}"
   if [ ! -e ${RESTORE_FILE} ]; then
@@ -282,12 +283,18 @@ restoreIncrementalBackup () {
     mkdir ${TMP_FOLDER}
   fi
 
-  cp ${RESTORE_FILE} ${TMP_FILE} || { errormsg "Failed creating temporary ${TMP_FILE}"; }
+  cp ${RESTORE_FILE} ${TMP_FOLDER} || { errormsg "Failed creating temporary ${TMP_FILE}"; }
   
-  local file_type=`file ${TMP_FILE} | grep compressed`
+  local compressed_file=`find $TMP_FOLDER -type f -printf "%f\n"`
+  local file_type=`file ${TMP_FOLDER}/${compressed_file} | grep compressed`
+
   if [ ! -z "${file_type}" ]; then
-    echo "  Decompressing ${TMP_FILE}"
-    gzip -d ${TMP_FILE} || { errormsg "Failed decompressing ${TMP_FILE}"; }
+    echo "  Decompressing ${TMP_FOLDER}/${compressed_file}"
+    gzip -d ${TMP_FOLDER}/${compressed_file} || { errormsg "Failed decompressing ${TMP_FOLDER}/${compressed_file}"; }
+
+    local decompressed_file=`find $TMP_FOLDER -type f -printf "%f\n"`
+    echo "  Renaming ${decompressed_file} to ${TMP_FILE}"
+    mv $decompressed_file $TMP_FILE || { errormsg "Failed renaming ${decompressed_file} to ${TMP_FILE}"; }
   fi
 
   echo "  Replaying ${TMP_FOLDER}/oplog.bson"
