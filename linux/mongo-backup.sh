@@ -271,7 +271,7 @@ restoreFullBackup () {
 ### INCREMENTAL ###
 restoreIncrementalBackup () {
   local TMP_FOLDER='/tmp/mongorestore'
-  local TMP_FILE='${TMP_FOLDER}/oplog.bson.gz'
+  local TMP_FILE="${TMP_FOLDER}/oplog.bson.gz"
 
   if [ ! -e ${RESTORE_FILE} ]; then
     errormsg "${RESTORE_FILE} not found or permission problem"
