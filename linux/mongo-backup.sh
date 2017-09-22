@@ -35,7 +35,7 @@ RESTORE_PATH=''
 # Restore file, provided as argument
 RESTORE_FILE=''
 MONGODB_DATA='/data'
-
+OPLOG_LIMIT=''
 
 # REVIEW oplog file method, where it is placed (should be on backup/?)
 LAST_OPLOG_FILE='/opt/mongo_last_oplog.time'
@@ -297,7 +297,15 @@ restoreIncrementalBackup () {
   fi
 
   echo "  Replaying ${TMP_FOLDER}/oplog.bson"
-  /usr/bin/mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE} from ${TMP_FOLDER}/oplog.bson"; }
+
+  if [ ! -z "${OPLOG_LIMIT}" ]; then
+    echo "  until ${OPLOG_LIMIT}"
+    local mongorestore_opts="--oplogReplay --oplogLimit ${OPLOG_LIMIT}"
+  else
+    local mongorestore_opts="--oplogReplay"
+  fi
+
+  mongorestore ${mongorestore_opts} ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE} from ${TMP_FOLDER}/oplog.bson"; }
 
   echo "  Removing temp files"
   rm -rf ${TMP_FOLDER}
@@ -406,6 +414,8 @@ usage () {
   echo " -f \$restore_file  : Set the file from which the restore will be done"
   echo " -D \$database_path : Optional: Path to mongo database files. Only for full restore."
   echo "                       default: '/data'"
+  echo " -L \$oplog_limit   : Optional [Only incremental restore]; Prevents applying changes after the specified time"
+  echo "                       Check mongorestore documentation"
   echo ""
   echo " Options:"
   echo "  -S \$volume_size  :  Specify the max size of the Virtual Volume (optional). Used for Full mode. Ignored otherwise"
@@ -444,6 +454,7 @@ while [ "$#" -gt 0 ]; do
     -R) RESTORE=true; RESTORE_MODE=$2; shift 2;;
     -f) RESTORE_FILE=$2; shift 2;;
     -D) MONGODB_DATA=$2; shift 2;;
+    -L) OPLOG_LIMIT=$2; shift 2;;
 
     -P) BACKUP_PATH=$2; shift 2;;
 
