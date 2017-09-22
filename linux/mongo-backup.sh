@@ -298,6 +298,8 @@ restoreIncrementalBackup () {
 
   echo "  Replaying ${TMP_FOLDER}/oplog.bson"
   /usr/bin/mongorestore --oplogReplay ${TMP_FOLDER} || { errormsg "Problem restoring ${RESTORE_FILE} from ${TMP_FOLDER}/oplog.bson"; }
+
+  echo "  Removing temp files"
   rm -rf ${TMP_FOLDER}
 }
 
