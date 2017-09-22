@@ -3,7 +3,7 @@
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
 # ToDo: Restore => check master; check disk (of)
 
-readonly SCRIPT_VERSION='0.9.1'
+readonly SCRIPT_VERSION='0.9.4'
 
 # LVM where Mongo data is stored
 LVM_GROUP='mongo_data'
@@ -395,6 +395,7 @@ setup () {
 }
 
 usage () {
+  echo "$(basename $0) v. ${SCRIPT_VERSION}"
   echo "Backup or restore a mongo database, both incremental and full backups."
   echo " Usage:"
   echo "  $(basename $0) -B \$backup_mode [-S \$volume_size] [-P \$backup_path] [options] " 
