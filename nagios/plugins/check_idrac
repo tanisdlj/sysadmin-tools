@@ -1,0 +1,162 @@
+#!/bin/bash
+
+# Nagios script to check Dell iDRAC 7
+# Writen by Diego Lucas Jimenez, 2017, for Projectplace.
+
+# It works better reading the MIBS file
+# You should place it under /usr/share/mibs/ with rx perms so Nagios
+# can read it or properly install it for your SNMP in your nagios host
+
+# 05/10/2017 Initial version
+
+readonly VERSION="1.0"
+readonly SNMP_STATUS='1.3.6.1.4.1.674.10892.5.2'
+readonly SNMP_SYSTEM_STATUS='1.3.6.1.4.1.674.10892.5.2.1'
+#='IDRAC-MIB-SMIv2::globalSystemStatus'
+readonly SNMP_LCD_STATUS='1.3.6.1.4.1.674.10892.5.2.2'
+#'IDRAC-MIB-SMIv2::systemLCDStatus'
+readonly SNMP_STORAGE_STATUS='1.3.6.1.4.1.674.10892.5.2.3'
+#'IDRAC-MIB-SMIv2::globalStorageStatus'
+readonly SNMP_POWER_STATE='1.3.6.1.4.1.674.10892.5.2.4'
+#'iDRAC-MIB-SMIv2::systemPowerState'
+
+
+# User Args
+HOST=""
+COMMUNITY="public"
+MIB_FILE="/usr/share/mibs/idrac-smiv2.mib"
+
+STATUS="UNKNOWN"
+STATUS_CODE=3
+OUTPUT=""
+
+# Functions to be called
+setup () {
+  checkArgs
+  checkSystem
+  checkLcd
+  checkStorage
+  checkPower
+  printOutput
+}
+
+# Checking the provided arguments are right
+checkArgs () {
+  # Host
+  if [ -z "$SNMP_HOST" ]; then
+    echo "ERROR: No host defined"
+    exit 3
+  fi
+  # # Check MIB file
+  # if [ ! -r "$MIB_FILE" ]; then
+  #   echo "ERROR: MIB file not found or permission problem"
+  #   exit 3
+  # fi
+}
+
+checkSystem () {
+  checkSNMP ${SNMP_SYSTEM_STATUS} "ok" "3" "System"
+}
+
+checkLcd () {
+  checkSNMP "${SNMP_LCD_STATUS}" "ok" "3" "LCD"
+}
+
+checkStorage () {
+  checkSNMP "${SNMP_STORAGE_STATUS}" "ok" "3" "Storage"
+}
+
+checkPower () {
+  checkSNMP "${SNMP_POWER_STATE}" "on" "4" "Power"
+}
+
+checkSNMP () {
+  local MIB="$1"
+  local expected_status="$2"
+  local expected_exitcode="$3"
+  local subsystem="$4"
+
+  HEALTH_STATUS=$(snmpwalk -v2c -O Qv -m ${MIB_FILE} -c ${COMMUNITY} ${SNMP_HOST} ${MIB})
+
+  if [ -z "${HEALTH_STATUS}" ]; then
+    setUnknown
+  elif [ "${HEALTH_STATUS}" != "${expected_status}" ] || [ "${HEALTH_STATUS}" != "${expected_exitcode}" ]; then
+    setCritical
+  fi
+
+  OUTPUT="${OUTPUT}${subsystem}=${HEALTH_STATUS} "
+}
+
+# setWarning () {
+#   if [ "${STATUS}" -ne "CRITICAL" ]; then
+#     STATUS="WARNING"
+#     STATUS_CODE=1
+#   fi
+# }
+
+setCritical () {
+  STATUS="CRITICAL"
+  STATUS_CODE=2
+}
+
+setUnknown () {
+  if [ "${STATUS}" != "CRITICAL" ]; then
+    STATUS="UNKNOWN"
+    STATUS_CODE=3
+  fi
+}
+
+setOk () {
+  if [ "${STATUS}" != "CRITICAL" ] || [ "${STATUS}" != "UNKNOWN" ]; then
+    STATUS="OK"
+    STATUS_CODE=0
+  fi
+}
+
+printOutput () {
+  setOk
+  OUTPUT="${STATUS};${OUTPUT}"
+  echo "${OUTPUT}"
+  exit $STATUS_CODE
+}
+
+# Help / Usage function
+usage () {
+  echo "  Check Dell iDRAC health."
+  echo "  Usage: check_idrac [[-h|--help] | [-v|--version]] -H \$HOST [-C \$COMMUNITY] [-M \$MIB]"
+  echo "  ~# check_idrac -H eql.acme.com -C communString -M /pathToMIB"
+  echo "  OK;System=ok LCD=ok Storage=ok Power=on"
+  echo ""
+  echo "    -h | --help   : Shows this message"
+  echo "    -V | --version : Prints plugin version"
+  echo "    -H \$host     : Host or ip"
+  echo "    -C \$community: SNMP Community string (default public)"
+  echo "    -M \$MIB      : MIB file (default $MIB_FILE)"
+}
+
+# Args management
+if [ "$#" -eq 0 ]; then
+  echo "ERROR: Arguments required"
+  usage
+  exit 3
+fi
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    # Select operation to perform
+    -V) echo "check_idrac VERSION $VERSION"; exit 0;;
+    --version) echo "check_idrac VERSION $VERSION"; exit 0;;
+
+    # Parameters
+    -H) SNMP_HOST="$2"; shift 2;;
+    -C) COMMUNITY="$2"; shift 2;;
+    -M) MIB_FILE="$2"; shift 2;;
+
+    # Other args
+    -h) usage; exit 0;;
+    --help) usage; exit 0;;
+    *) echo "ERROR: Unknown option $1"; usage; exit 3;;
+  esac
+done
+
+setup
