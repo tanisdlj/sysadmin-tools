@@ -107,7 +107,7 @@ setUnknown () {
 }
 
 setOk () {
-  if [ "${STATUS}" != "CRITICAL" ] || [ "${STATUS}" != "UNKNOWN" ]; then
+  if [ "${STATUS}" != "CRITICAL" ] && [ "${STATUS}" != "UNKNOWN" ]; then
     STATUS="OK"
     STATUS_CODE=0
   fi
