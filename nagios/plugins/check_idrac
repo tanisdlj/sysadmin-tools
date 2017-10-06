@@ -19,6 +19,7 @@ readonly SNMP_STORAGE_STATUS='1.3.6.1.4.1.674.10892.5.2.3'
 #'IDRAC-MIB-SMIv2::globalStorageStatus'
 readonly SNMP_POWER_STATE='1.3.6.1.4.1.674.10892.5.2.4'
 #'iDRAC-MIB-SMIv2::systemPowerState'
+readonly SNMP_NOT_FOUND='No Such Instance currently exists at this OID'
 
 
 # User Args
@@ -55,7 +56,7 @@ checkArgs () {
 }
 
 checkSystem () {
-  checkSNMP ${SNMP_SYSTEM_STATUS} "ok" "3" "System"
+  checkSNMP "${SNMP_SYSTEM_STATUS}" "ok" "3" "System"
 }
 
 checkLcd () {
@@ -78,7 +79,7 @@ checkSNMP () {
 
   HEALTH_STATUS=$(snmpwalk -v2c -O Qv -m ${MIB_FILE} -c ${COMMUNITY} ${SNMP_HOST} ${MIB})
 
-  if [ -z "${HEALTH_STATUS}" ]; then
+  if [ -z "${HEALTH_STATUS}" ] || [ "${HEALTH_STATUS}" == "${SNMP_NOT_FOUND}" ]; then
     setUnknown
   elif [ "${HEALTH_STATUS}" != "${expected_status}" ] && [ "${HEALTH_STATUS}" != "${expected_exitcode}" ]; then
     setCritical
