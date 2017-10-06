@@ -9,7 +9,7 @@
 
 # 05/10/2017 Initial version
 
-readonly VERSION="1.0.6"
+readonly VERSION="1.1"
 readonly SNMP_STATUS='1.3.6.1.4.1.674.10892.5.2'
 readonly SNMP_SYSTEM_STATUS='1.3.6.1.4.1.674.10892.5.2.1'
 #='IDRAC-MIB-SMIv2::globalSystemStatus'
@@ -19,6 +19,23 @@ readonly SNMP_STORAGE_STATUS='1.3.6.1.4.1.674.10892.5.2.3'
 #'IDRAC-MIB-SMIv2::globalStorageStatus'
 readonly SNMP_POWER_STATE='1.3.6.1.4.1.674.10892.5.2.4'
 #'iDRAC-MIB-SMIv2::systemPowerState'
+
+readonly SNMP_UNKN='other | unknown'
+readonly OID_UNKN='1 | 2'
+readonly SNMP_OK='ok'
+readonly OID_OK='3'
+readonly SNMP_WARN='nonCritical'
+readonly OID_WARN='4'
+readonly SNMP_CRIT='critical | nonRecoverable'
+readonly OID_CRIT='5 | 6'
+
+readonly PWR_SNMP_UNKN='other | unknown'
+readonly PWR_OID_UNKN='1 | 2'
+readonly PWR_SNMP_OK='on'
+readonly PWR_OID_OK='4'
+readonly PWR_SNMP_CRIT='off'
+readonly PWR_OID_CRIT='3'
+
 readonly SNMP_NOT_FOUND='No Such Instance currently exists at this OID'
 
 
@@ -28,7 +45,7 @@ COMMUNITY="public"
 MIB_FILE="/usr/share/mibs/idrac-smiv2.mib"
 
 STATUS=""
-STATUS_CODE=
+EXIT_CODE=
 OUTPUT=""
 
 # Functions to be called
@@ -56,61 +73,86 @@ checkArgs () {
 }
 
 checkSystem () {
-  checkSNMP "${SNMP_SYSTEM_STATUS}" "ok" "3" "System"
+  checkSNMP "${SNMP_SYSTEM_STATUS}" "System"
 }
 
 checkLcd () {
-  checkSNMP "${SNMP_LCD_STATUS}" "ok" "3" "LCD"
+  checkSNMP "${SNMP_LCD_STATUS}" "LCD"
 }
 
 checkStorage () {
-  checkSNMP "${SNMP_STORAGE_STATUS}" "ok" "3" "Storage"
+  checkSNMP "${SNMP_STORAGE_STATUS}" "Storage"
 }
 
 checkPower () {
-  checkSNMP "${SNMP_POWER_STATE}" "on" "4" "Power"
+  checkSNMP "${SNMP_POWER_STATE}" "Power"
 }
 
 checkSNMP () {
   local MIB="$1"
-  local expected_status="$2"
-  local expected_exitcode="$3"
-  local subsystem="$4"
+  local subsystem="$2"
 
-  HEALTH_STATUS=$(snmpwalk -v2c -O Qv -m ${MIB_FILE} -c ${COMMUNITY} ${SNMP_HOST} ${MIB})
+  HEALTH_STATUS=$(snmpwalk -v2c -O Qv -m ${MIB_FILE} -c ${COMMUNITY} ${SNMP_HOST} ${MIB} 2>/dev/null)
+  
+  if [ "${subsystem}" == "Power" ]; then
+    STATUS_UNKN="${PWR_SNMP_UNKN}"
+    CODE_UNKN="${PWR_OID_UNKN}"
+    STATUS_OK="${PWR_SNMP_OK}"
+    CODE_OK="${PWR_OID_OK}"
+    STATUS_CRIT="${PWR_SNMP_CRIT}"
+    CODE_CRIT="${PWR_OID_CRIT}"
+    STATUS_WARN="null"
+    CODE_WARN="123456789"
+  else
+    STATUS_UNKN="${SNMP_UNKN}"
+    CODE_UNKN="${OID_UNKN}"
+    STATUS_OK="${SNMP_OK}"
+    CODE_OK="${OID_OK}"
+    STATUS_WARN="${SNMP_WARN}"
+    CODE_WARN="${OID_WARN}"
+    STATUS_CRIT="${SNMP_CRIT}"
+    CODE_CRIT="${OID_CRIT}"
+  fi
 
   if [ -z "${HEALTH_STATUS}" ] || [ "${HEALTH_STATUS}" == "${SNMP_NOT_FOUND}" ]; then
     setUnknown
-  elif [ "${HEALTH_STATUS}" != "${expected_status}" ] && [ "${HEALTH_STATUS}" != "${expected_exitcode}" ]; then
-    setCritical
   fi
+
+  case "${HEALTH_STATUS}" in
+    "${STATUS_CRIT}" | "${CODE_CRIT}") setCritical ;;
+    "${STATUS_WARN}" | "${CODE_WARN}") setWarning ;;
+    "${STATUS_OK}" | "${CODE_OK}") setOk ;;
+    "${STATUS_UNKN}" | "${CODE_UNKN}") setUnknown ;;
+  esac
 
   OUTPUT="${OUTPUT}${subsystem}=${HEALTH_STATUS} "
 }
 
-# setWarning () {
-#   if [ "${STATUS}" -ne "CRITICAL" ]; then
-#     STATUS="WARNING"
-#     STATUS_CODE=1
-#   fi
-# }
+setWarning () {
+  if [ "${STATUS}" != "CRITICAL" ]; then
+    STATUS="WARNING"
+    EXIT_CODE=1
+  fi
+}
 
 setCritical () {
   STATUS="CRITICAL"
-  STATUS_CODE=2
+  EXIT_CODE=2
 }
 
 setUnknown () {
-  if [ "${STATUS}" != "CRITICAL" ]; then
+  if [ "${STATUS}" != "CRITICAL" ] && [ "${STATUS}" != "WARNING" ]; then
     STATUS="UNKNOWN"
-    STATUS_CODE=3
+    EXIT_CODE=3
   fi
 }
 
 setOk () {
-  if [ "${STATUS}" != "CRITICAL" ] && [ "${STATUS}" != "UNKNOWN" ]; then
+  if [ "${STATUS}" != "CRITICAL" ] \
+    && [ "${STATUS}" != "WARNING" ] \
+    && [ "${STATUS}" != "UNKNOWN" ]; then
     STATUS="OK"
-    STATUS_CODE=0
+    EXIT_CODE=0
   fi
 }
 
@@ -118,7 +160,7 @@ printOutput () {
   setOk
   OUTPUT="${STATUS};${OUTPUT}"
   echo "${OUTPUT}"
-  exit $STATUS_CODE
+  exit $EXIT_CODE
 }
 
 # Help / Usage function
