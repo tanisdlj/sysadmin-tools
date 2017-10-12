@@ -19,6 +19,7 @@ readonly SNMP_STORAGE_STATUS='1.3.6.1.4.1.674.10892.5.2.3'
 #'IDRAC-MIB-SMIv2::globalStorageStatus'
 readonly SNMP_POWER_STATE='1.3.6.1.4.1.674.10892.5.2.4'
 #'iDRAC-MIB-SMIv2::systemPowerState'
+readonly SNMP_IDRAC_VERSION='1.3.6.1.4.1.674.10892.2.1.1.2'
 
 readonly SNMP_UNKN='other | unknown'
 readonly OID_UNKN='1 | 2'
@@ -49,13 +50,17 @@ STATUS=""
 EXIT_CODE=
 OUTPUT=""
 
+HAS_DISK=true
+
 # Functions to be called
 setup () {
   checkArgs
+
   checkSystem
   checkLcd
   checkStorage
   checkPower
+
   printOutput
 }
 
@@ -82,7 +87,9 @@ checkLcd () {
 }
 
 checkStorage () {
-  checkSNMP "${SNMP_STORAGE_STATUS}" "Storage"
+  if [[ "${HAS_DISK}" ]]; then
+    checkSNMP "${SNMP_STORAGE_STATUS}" "Storage"
+  fi
 }
 
 checkPower () {
@@ -178,6 +185,7 @@ usage () {
   echo "    -H \$host     : Host or ip"
   echo "    -C \$community: SNMP Community string (default public)"
   echo "    -M \$MIB      : MIB file (default $MIB_FILE)"
+  echo "    --nodisk      : Skip disk checks"
 }
 
 # Args management
@@ -197,6 +205,7 @@ while [ "$#" -gt 0 ]; do
     -H) SNMP_HOST="$2"; shift 2;;
     -C) COMMUNITY="$2"; shift 2;;
     -M) MIB_FILE="$2"; shift 2;;
+    --nodisk) HAS_DISK=false;;
 
     # Other args
     -h) usage; exit 0;;
