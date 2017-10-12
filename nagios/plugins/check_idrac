@@ -37,6 +37,7 @@ readonly PWR_SNMP_CRIT='off'
 readonly PWR_OID_CRIT='3'
 
 readonly SNMP_NOT_FOUND='No Such Instance currently exists at this OID'
+readonly SNMP_NOT_FOUND2='No Such Object available on this agent at this OID'
 
 
 # User Args
@@ -114,7 +115,9 @@ checkSNMP () {
     CODE_CRIT="${OID_CRIT}"
   fi
 
-  if [ -z "${HEALTH_STATUS}" ] || [ "${HEALTH_STATUS}" == "${SNMP_NOT_FOUND}" ]; then
+  if [ -z "${HEALTH_STATUS}" ] \
+    || [ "${HEALTH_STATUS}" == "${SNMP_NOT_FOUND2}" ] \
+    || [ "${HEALTH_STATUS}" == "${SNMP_NOT_FOUND}" ]; then
     setUnknown
   fi
 
