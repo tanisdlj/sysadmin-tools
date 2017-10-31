@@ -2,7 +2,7 @@
 
 # Nagios script to check Elasticsearch types hits
 # Writen by Diego Lucas Jimenez, 2017, for Projectplace.
-
+# Types must be lowercase. ToDo: Convert to lowercase, check args (like n#)
 # 31/11/2017 Initial version
 
 ES_HOST="localhost"
