@@ -8,12 +8,13 @@
 ES_HOST="localhost"
 ES_TYPE=
 UTS=
-UNIT_TIME=
+UNIT_TIME="h"
 
 HITS=
+HITSxTIME=0
 
-WARNING=''
-CRITICAL='0'
+WARNING=5
+CRITICAL=0
 
 readonly VERSION=1.0
 readonly me=`basename "$0"`
@@ -50,23 +51,28 @@ query_ES () {
   fi
 }
 
-nagios_output () {
-  local perfdata="| ${ES_TYPE}=${HITS};${WARNING};${CRITICAL};0;;"
+calcHitsPerUT () {
+  HITSxTIME=$(echo "scale=3;${HITS}/${UTS}" | bc -l)
+}
 
-  if [ "${HITS}" -le "${CRITICAL}" ]; then
-    echo "CRITICAL: ${ES_TYPE}=${HITS} ${perfdata}"
+nagios_output () {
+  local perfdata="| ${ES_TYPE}=${HITSxTIME};${WARNING};${CRITICAL};0;;"
+
+  if $(echo "${HITSxTIME}<=${CRITICAL}" | bc); then
+    echo "CRITICAL: ${ES_TYPE}=${HITSxTIME}/${UNIT_TIME} ${perfdata}"
     exit 2
-  elif [ "${HITS}" -le "${WARNING}" ]; then
-    echo "WARNING: ${ES_TYPE}=${HITS} ${perfdata}"
+  elif $(echo "${HITSxTIME}<=${WARNING}" | bc); then
+    echo "WARNING: ${ES_TYPE}=${HITSxTIME}/${UNIT_TIME} ${perfdata}"
     exit 1
   else
-    echo "OK: ${ES_TYPE}=${HITS} ${perfdata}"
+    echo "OK: ${ES_TYPE}=${HITSxTIME}/${UNIT_TIME} ${perfdata}"
     exit 0
   fi
 }
 
 setup () {
   query_ES
+  calcHitsPerUT
   nagios_output
 }
 
