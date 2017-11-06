@@ -58,10 +58,10 @@ calcHitsPerUT () {
 nagios_output () {
   local perfdata="| ${ES_TYPE}=${HITSxTIME};${WARNING};${CRITICAL};0;;"
 
-  if $(echo "${HITSxTIME}<=${CRITICAL}" | bc); then
+  if [ $(echo "${HITSxTIME}<=${CRITICAL}" | bc) -eq 1 ]; then
     echo "CRITICAL: ${ES_TYPE}=${HITSxTIME}/${UNIT_TIME} ${perfdata}"
     exit 2
-  elif $(echo "${HITSxTIME}<=${WARNING}" | bc); then
+  elif [ $(echo "${HITSxTIME}<=${WARNING}" | bc) -eq 1 ]; then
     echo "WARNING: ${ES_TYPE}=${HITSxTIME}/${UNIT_TIME} ${perfdata}"
     exit 1
   else
